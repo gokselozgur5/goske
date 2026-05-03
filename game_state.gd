@@ -8,10 +8,12 @@ var play_started_ms: int = 0
 var comfort_exits: int = 0
 var alter_engagements: Dictionary = {}  # alter_id -> int
 var alter_trust: Dictionary = {}  # alter_id -> int (0-100, default 50)
+var unlocked_alters: Array[String] = []
 
 const TRUST_DEFAULT := 50
 
 signal trust_changed(alter_id: String, new_value: int)
+signal alter_unlocked(alter_id: String)
 
 func _ready() -> void:
 	play_started_ms = Time.get_ticks_msec()
@@ -34,6 +36,15 @@ func adjust_trust(alter_id: String, delta: int) -> void:
 	var new_val: int = clamp(current + delta, 0, 100)
 	alter_trust[alter_id] = new_val
 	trust_changed.emit(alter_id, new_val)
+
+func unlock_alter(alter_id: String) -> void:
+	if alter_id in unlocked_alters:
+		return
+	unlocked_alters.append(alter_id)
+	alter_unlocked.emit(alter_id)
+
+func is_unlocked(alter_id: String) -> bool:
+	return alter_id in unlocked_alters
 
 # Bu alter'in gorebildigi context subset'i
 func context_for(alter_id: String) -> Dictionary:

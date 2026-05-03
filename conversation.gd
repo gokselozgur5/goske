@@ -63,10 +63,14 @@ func start_with_trigger(triggering_alter_id: String) -> void:
 	var first_time := history.is_empty()
 	_open_ui()
 	var all_alters := get_tree().get_nodes_in_group("alters")
-	var ordered_ids: Array[String] = [triggering_alter_id]
+	var gs := get_tree().get_first_node_in_group("game_state")
+	var ordered_ids: Array[String] = []
+	if gs == null or gs.is_unlocked(triggering_alter_id):
+		ordered_ids.append(triggering_alter_id)
 	for a in all_alters:
 		if a.alter_id != triggering_alter_id:
-			ordered_ids.append(a.alter_id)
+			if gs == null or gs.is_unlocked(a.alter_id):
+				ordered_ids.append(a.alter_id)
 	if first_time:
 		var llm := get_node_or_null("/root/Main/LLMClient")
 		for aid in ordered_ids:

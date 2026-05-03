@@ -18,6 +18,8 @@ const FALLBACK_LINES := {
 var participants: Array[String] = []
 # history entry: {"role": "user|assistant", "content": "...", "alter_id": ""}
 var history: Array = []
+# Daha once initial line atan alter'lar - aciliylikta tekrar atmasin
+var greeted_alters: Array[String] = []
 
 func _ready() -> void:
 	add_to_group("conversation_ui")
@@ -28,9 +30,36 @@ func _ready() -> void:
 
 func _connect_trust_signal() -> void:
 	var gs := get_tree().get_first_node_in_group("game_state")
-	if gs and not gs.trust_changed.is_connected(_on_trust_changed):
-		gs.trust_changed.connect(_on_trust_changed)
+	if gs:
+		if not gs.trust_changed.is_connected(_on_trust_changed):
+			gs.trust_changed.connect(_on_trust_changed)
+		if not gs.alter_silenced.is_connected(_on_alter_silenced):
+			gs.alter_silenced.connect(_on_alter_silenced)
+		if not gs.exhaustion_changed.is_connected(_on_exhaustion_changed):
+			gs.exhaustion_changed.connect(_on_exhaustion_changed)
 	_refresh_all_trust_labels()
+	_refresh_exhaustion_label()
+
+func _on_exhaustion_changed(new_value: int) -> void:
+	_refresh_exhaustion_label()
+
+func _refresh_exhaustion_label() -> void:
+	var ex_label: Label = get_node_or_null("/root/Main/UI/ExhaustionLabel")
+	if ex_label == null:
+		return
+	var gs := get_tree().get_first_node_in_group("game_state")
+	if gs == null:
+		return
+	ex_label.text = "tukenis %d/100" % gs.exhaustion
+	# Renk degisimi: dusuk yesilimsi, yuksek kirmizimsi
+	var t: float = float(gs.exhaustion) / 100.0
+	ex_label.add_theme_color_override("font_color", Color(0.4 + t * 0.6, 0.7 - t * 0.4, 0.4 - t * 0.3, 1.0))
+
+func _on_alter_silenced(alter_id: String) -> void:
+	# Konusma history'sine bildirim, participants'tan cikar
+	if visible:
+		history_label.append_text("[color=#888888]— %s alter sessizlesti, kapsule geri kapandi —[/color]\n" % alter_id)
+	participants.erase(alter_id)
 
 func _on_trust_changed(alter_id: String, new_value: int) -> void:
 	_set_trust_label(alter_id, new_value)
@@ -60,26 +89,25 @@ func is_open() -> bool:
 func start_with_trigger(triggering_alter_id: String) -> void:
 	if visible:
 		return
-	var first_time := history.is_empty()
 	_open_ui()
 	var all_alters := get_tree().get_nodes_in_group("alters")
 	var gs := get_tree().get_first_node_in_group("game_state")
 	var ordered_ids: Array[String] = []
-	if gs == null or gs.is_unlocked(triggering_alter_id):
+	if gs == null or (gs.is_unlocked(triggering_alter_id) and not gs.is_silenced(triggering_alter_id)):
 		ordered_ids.append(triggering_alter_id)
 	for a in all_alters:
 		if a.alter_id != triggering_alter_id:
-			if gs == null or gs.is_unlocked(a.alter_id):
+			if gs == null or (gs.is_unlocked(a.alter_id) and not gs.is_silenced(a.alter_id)):
 				ordered_ids.append(a.alter_id)
-	if first_time:
-		var llm := get_node_or_null("/root/Main/LLMClient")
-		for aid in ordered_ids:
-			_request_initial(aid, llm)
-	else:
-		# Geri donus: alter'lar hatirliyor, sadece participants restore
-		for aid in ordered_ids:
+	var llm := get_node_or_null("/root/Main/LLMClient")
+	for aid in ordered_ids:
+		if aid in greeted_alters:
+			# Zaten konusmus, sadece participant olarak restore
 			if not aid in participants:
 				participants.append(aid)
+		else:
+			# Yeni alter, ilk satirini iste
+			_request_initial(aid, llm)
 
 func _request_initial(alter_id: String, llm) -> void:
 	if llm == null:
@@ -105,6 +133,8 @@ func _add_participant_with_initial(alter_id: String, initial_line: String) -> vo
 	if alter_id in participants:
 		return
 	participants.append(alter_id)
+	if not alter_id in greeted_alters:
+		greeted_alters.append(alter_id)
 	_append_alter_line(alter_id, initial_line)
 
 func _open_ui() -> void:
@@ -139,13 +169,17 @@ func _on_user_submit(text: String) -> void:
 	var llm := get_node_or_null("/root/Main/LLMClient")
 	if llm == null:
 		return
+	var gs := get_tree().get_first_node_in_group("game_state")
 	for alter_id in participants:
+		if gs and gs.is_silenced(alter_id):
+			continue
 		var hist := _build_history_for(alter_id)
 		var ctx := _context_for(alter_id)
 		llm.request_alter_response(alter_id, hist, ctx, _on_alter_response)
 
 func _reset_conversation() -> void:
 	history.clear()
+	greeted_alters.clear()
 	history_label.clear()
 	history_label.append_text("[color=#888888]— history sifirlandi —[/color]\n")
 	var gs := get_tree().get_first_node_in_group("game_state")
@@ -163,6 +197,10 @@ func _on_alter_response(alter_id: String, raw: String, error: String) -> void:
 	var parsed := _parse_alter_response(raw)
 	_append_alter_line(alter_id, parsed["line"])
 	_apply_trust_delta(alter_id, parsed["trust_delta"])
+	# Tukenis ekonomisi: her alter cevabi tukenisi artirir
+	var gs := get_tree().get_first_node_in_group("game_state")
+	if gs:
+		gs.add_exhaustion(gs.EXHAUSTION_PER_RESPONSE)
 
 func _parse_alter_response(raw: String) -> Dictionary:
 	# LLM bazen JSON'i markdown code block icine sariyor; temizle

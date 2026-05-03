@@ -1,0 +1,10 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Local secrets (API keys etc) - never commit
+secrets.cfg
+*.local.cfg
+
+# Godotiq local bridge state (per-machine)
+.godotiq/

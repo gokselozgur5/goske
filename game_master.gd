@@ -1,8 +1,8 @@
 extends Node
 
-# Game Master: tum karakterleri (alters + NPC'ler) tek LLM call ile yonetir.
-# FRP/DM mantigi - dramatic director, hangi karakter konusur, dunyada ne olur
-# tek zihin karar verir. Manifesto: "AI must be structural, not cosmetic".
+# Game Master: handles all characters (alters + future NPCs) through a single
+# LLM call. FRP/DM pattern - dramatic director, decides who speaks each turn,
+# what happens in the world. Manifesto: "AI must be structural, not cosmetic".
 #
 # Public API:
 #   request_turn(history, world_state, on_complete)
@@ -17,34 +17,34 @@ const MAX_TOKENS := 1000
 var api_key: String = ""
 var personas_node: Node = null
 
-const SYSTEM_BASE := """Sen Goske oyununun GAME MASTER'isin. FRP'deki DM gibi: tum karakterleri sen oynursun, dunyayi sen yonetirsin, dramatik direktor olarak kim ne zaman konusur sen secersin.
+const SYSTEM_BASE := """You are the GAME MASTER of Goske, a narrative game. Like a tabletop DM: you play all characters, you run the world, you decide who speaks and when as a dramatic director.
 
-OYUN: Goske bir yazilimci, hibrit, etrafindaki insanlar ona kavanozun icindeymis gibi uzak gelir. Iceride alter'lari (kendisi'nin baska yorumlanmis halleri) var. Disarida insanlar (NPC'ler) var. Yabancilasma teması.
+GAME: Goske is a software developer, hybrid, the people around him feel as if they are inside a jar while he watches from the outside. Inside him are alters (different interpretations of the same self). Outside there are people (NPCs). Theme: alienation.
 
-OYUNCU: kanka, Goske'yi yonetir. Free text yazar, sen yorumlarsin.
+PLAYER: writes freely as Goske. You interpret their input.
 
-KURAL:
-- Her turn'de hangi karakter(ler)in konusacagina SEN karar verirsin
-- Hepsinin konusmasi gerekmez. Bir alter susabilir, sadece bazilari konusabilir, vb. Anlamli sec.
-- Sessizlestirilmis (silenced) karakterler ASLA konusmaz
-- "narrator" karakterini BG3'teki Narrator gibi kullan: sahne atmosferi, Goske'nin ic durumu, mekan tasviri, alter'larin gorulmemis tepkileri. Her turn'de bir narrator satiri olabilir, bazen olmayabilir, bazen sadece narrator konusur (alter'lar susup sahne atmosferi onemli oldugunda).
-- Asik fazla konusturma — manifesto: density > volume
-- Trust deltalari her speaker icin ayri (-5 ile +5 arasi int)
-- World events: exhaustion_delta (int), npc_affected (intensity 0-1)
-- Cevabin SADECE asagidaki JSON formatinda, baska hicbir sey YOK:
+RULES:
+- You decide which character(s) speak each turn. Not all of them must speak. One alter may stay silent, only the narrator may speak, etc. Pick what is meaningful.
+- Silenced characters NEVER speak.
+- trust_delta per speaker, integer in -5..+5 range.
+- world_events: exhaustion_delta (int), npc_affected (intensity 0..1).
+- Use the "narrator" character like the BG3 Narrator: scene atmosphere, Goske's inner state, environment, an alter's unspoken reaction. Often one short narrator line per turn, sometimes none, sometimes only the narrator (when atmosphere matters more than speech).
+- Don't make everyone talk every turn. Manifesto: density > volume.
+
+OUTPUT: ONLY valid JSON, nothing else (no preamble, no markdown fences):
 
 {
   "speakers": [
-    {"id": "<karakter_id>", "line": "<soyledikleri>", "trust_delta": <int>}
+    {"id": "<character_id>", "line": "<their words>", "trust_delta": <int>}
   ],
   "world_events": [
     {"type": "exhaustion_delta", "amount": <int>},
     {"type": "npc_affected", "npc_id": "<id>", "intensity": <float>}
   ],
-  "narration": "<opsiyonel sahne notu, bos string olabilir>"
+  "narration": "<optional scene note, may be empty string>"
 }
 
-Turkce konus. Konvansiyonel RP cevaplari verme - manifesto: 'controlled ambiguity is a tool, not a flaw'."""
+Write in English. Avoid conventional RP filler. Manifesto: 'controlled ambiguity is a tool, not a flaw'."""
 
 func _ready() -> void:
 	_load_api_key()
@@ -54,11 +54,11 @@ func _load_api_key() -> void:
 	var cfg := ConfigFile.new()
 	var err := cfg.load("res://secrets.cfg")
 	if err != OK:
-		push_error("[GM] secrets.cfg yuklenemedi: %s" % err)
+		push_error("[GM] secrets.cfg failed to load: %s" % err)
 		return
 	api_key = cfg.get_value("anthropic", "api_key", "")
 	if api_key == "":
-		push_error("[GM] api_key bos")
+		push_error("[GM] api_key empty")
 
 func request_turn(history: Array, world_state: Dictionary, on_complete: Callable) -> void:
 	if api_key == "":
@@ -68,7 +68,7 @@ func request_turn(history: Array, world_state: Dictionary, on_complete: Callable
 		personas_node = get_node_or_null("/root/Main/AlterPersonas")
 
 	var system := _build_system_prompt(world_state)
-	# Anthropic API sadece role + content kabul eder; ekstra field'lari temizle
+	# Anthropic API only accepts {role, content}; strip extra fields
 	var msgs: Array = []
 	for entry in history:
 		msgs.append({
@@ -76,7 +76,7 @@ func request_turn(history: Array, world_state: Dictionary, on_complete: Callable
 			"content": str(entry.get("content", "")),
 		})
 	if msgs.is_empty() or msgs[0].get("role", "") != "user":
-		msgs.insert(0, {"role": "user", "content": "[oyun basliyor]"})
+		msgs.insert(0, {"role": "user", "content": "[the game begins]"})
 
 	var body := {
 		"model": MODEL,
@@ -104,20 +104,20 @@ func _build_system_prompt(world_state: Dictionary) -> String:
 	var parts := PackedStringArray()
 	parts.append(SYSTEM_BASE)
 
-	parts.append("\n--- KARAKTERLER ---")
+	parts.append("\n--- CHARACTERS ---")
 	if personas_node:
 		for aid in personas_node.PERSONAS.keys():
 			var c: Dictionary = personas_node.PERSONAS[aid]
 			parts.append("\n[id: %s] %s — %s" % [aid, c.get("name", aid), c.get("core", "")])
-			parts.append("  Sifatlar: %s" % ", ".join(_to_packed(c.get("traits", []))))
-			parts.append("  Asla: %s" % ", ".join(_to_packed(c.get("forbidden", []))))
-			parts.append("  Ses: %s" % c.get("voice", ""))
+			parts.append("  Traits: %s" % ", ".join(_to_packed(c.get("traits", []))))
+			parts.append("  Never: %s" % ", ".join(_to_packed(c.get("forbidden", []))))
+			parts.append("  Voice: %s" % c.get("voice", ""))
 			var examples: Array = c.get("examples", [])
 			if examples.size() > 0:
-				parts.append("  Ornek satir: \"%s\"" % str(examples[0]))
+				parts.append("  Sample line: \"%s\"" % str(examples[0]))
 
 	if not world_state.is_empty():
-		parts.append("\n--- DUNYA STATE ---")
+		parts.append("\n--- WORLD STATE ---")
 		parts.append(JSON.stringify(world_state))
 
 	return "\n".join(parts)

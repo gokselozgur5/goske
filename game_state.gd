@@ -1,8 +1,8 @@
 extends Node
 
-# Oyun state'i tutar; alter'lar context_for(id) ile filtered subset alir.
-# Asymmetric info access: her alter farkli veri gorur (manifesto:
-# "AI partner exists with partial access to truth").
+# Holds runtime game state. Alters get filtered subsets via context_for(id).
+# Asymmetric info access (manifesto: "AI partner exists with partial access
+# to truth").
 
 var play_started_ms: int = 0
 var comfort_exits: int = 0
@@ -66,7 +66,7 @@ func add_exhaustion(amount: int) -> void:
 func recover_exhaustion(delta: float) -> void:
 	if exhaustion <= 0:
 		return
-	# Float biriktir, int'e cevirip uygula
+	# Accumulate float, apply when >= 1.0
 	_recovery_accumulator += EXHAUSTION_RECOVERY_PER_SEC * delta
 	if _recovery_accumulator >= 1.0:
 		var step: int = int(_recovery_accumulator)
@@ -77,7 +77,7 @@ func recover_exhaustion(delta: float) -> void:
 var _recovery_accumulator: float = 0.0
 
 func _maybe_silence_top_trust_alter() -> void:
-	# En yuksek trust olan acik alter sessizlesir (Sekiro Dragonrot - bulasma)
+	# Highest-trust unlocked alter goes silent (Sekiro Dragonrot infection)
 	var max_trust: int = -1
 	var target: String = ""
 	for aid in unlocked_alters:
@@ -90,7 +90,7 @@ func _maybe_silence_top_trust_alter() -> void:
 		silenced_alters.append(target)
 		alter_silenced.emit(target)
 
-# Bu alter'in gorebildigi context subset'i
+# Subset of state visible to a specific alter (asymmetric access)
 func context_for(alter_id: String) -> Dictionary:
 	var full := {
 		"play_seconds": play_seconds(),
@@ -104,6 +104,7 @@ func context_for(alter_id: String) -> Dictionary:
 		"blue":
 			return full
 		"green":
+			# Censored: only neutral/positive metrics
 			return {
 				"play_seconds": full["play_seconds"],
 				"engagements": full["engagements"],

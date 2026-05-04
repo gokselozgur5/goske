@@ -20,6 +20,10 @@ var mystery_phase: String = "early"
 # Monotony: routine accumulates, novelty drains. Drives the saturation
 # post-process — at 1.0 the world is grayscale, at 0.0 fully colored.
 var monotony: float = 0.0
+# Tension: drama escalation. Rises in pressured moments, decays in idle.
+# Drives trust-delta multipliers + narrator pacing. Disco Elysium "stakes
+# escalating" without a click-options UI (manifesto: no canned trees).
+var tension: float = 0.0
 
 const TRUST_DEFAULT := 50
 const EXHAUSTION_PER_RESPONSE := 5
@@ -30,6 +34,7 @@ const MONOTONY_PER_RESPONSE := 0.018
 const MONOTONY_PER_REST := 0.05
 const MONOTONY_PER_COMFORT_EXIT := -0.04
 const MONOTONY_PER_WHISPER := -0.08
+const TENSION_DECAY_PER_TURN := 0.06  # drains slightly each turn that isn't escalating
 
 signal trust_changed(alter_id: String, new_value: int)
 signal alter_unlocked(alter_id: String)
@@ -39,6 +44,7 @@ signal npc_affected(npc_id: String, new_intensity: float)
 signal day_passed(new_days_alone: int)
 signal mystery_phase_changed(new_phase: String)
 signal monotony_changed(new_value: float)
+signal tension_changed(new_value: float)
 
 func _ready() -> void:
 	play_started_ms = Time.get_ticks_msec()
@@ -85,6 +91,23 @@ func rest() -> void:
 	day_passed.emit(days_alone)
 	# Resting is itself routine — adds to monotony
 	adjust_monotony(MONOTONY_PER_REST)
+
+func set_tension(value: float) -> void:
+	var new_val: float = clamp(value, 0.0, 1.0)
+	if abs(new_val - tension) < 0.0001:
+		return
+	tension = new_val
+	tension_changed.emit(tension)
+
+func decay_tension() -> void:
+	if tension <= 0.0:
+		return
+	set_tension(tension - TENSION_DECAY_PER_TURN)
+
+# Trust deltas amplify under tension. Lower bound 1.0x at no tension,
+# up to ~2x at full rupture.
+func tension_multiplier() -> float:
+	return 1.0 + tension
 
 func adjust_monotony(delta: float) -> void:
 	var new_val: float = clamp(monotony + delta, 0.0, 1.0)

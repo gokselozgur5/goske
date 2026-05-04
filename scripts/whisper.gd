@@ -35,7 +35,7 @@ func _on_whisper_requested(npc_id: String) -> void:
 	# Reuse request_turn but ignore JSON structure on parse fail.
 	gm.request_turn([{"role": "user", "content": prompt}], _world_state(), _on_gm_response.bind(npc_id))
 
-func _on_gm_response(turn: Dictionary, error: String, npc_id: String) -> void:
+func _on_gm_response(turn: Dictionary, error: String, _npc_id: String) -> void:
 	# The GM may try to honor JSON. If a speaker line came through, use
 	# its content (any speaker; whisper is one-line). Otherwise show "...".
 	var line := ""

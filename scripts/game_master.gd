@@ -27,11 +27,18 @@ RULES:
 - You decide which character(s) speak each turn. Not all of them must speak. One alter may stay silent, only the narrator may speak, etc. Pick what is meaningful.
 - Silenced characters NEVER speak.
 - trust_delta per speaker, integer in -5..+5 range.
-- world_events: exhaustion_delta (int), npc_affected (intensity 0..1), mystery_phase ("early"|"mid"|"late").
+- world_events: exhaustion_delta (int), npc_affected (intensity 0..1), mystery_phase ("early"|"mid"|"late"), tension (level 0..1).
 - Use the "narrator" character like the BG3 Narrator: scene atmosphere, Goske's inner state, environment, an alter's unspoken reaction. Often one short narrator line per turn, sometimes none, sometimes only the narrator (when atmosphere matters more than speech).
 - You decide who speaks. Skipping an alter is a valid dramatic choice — silence speaks. If a participant is conspicuously absent for a few turns and the player notices, the narrator may briefly account for it ("red has been quiet").
 - Narrator optional per turn.
 - Manifesto: density > volume — keep each line short (1-2 sentences), don't pad.
+
+JSON QUOTING — strict:
+- Every "line" string must be VALID JSON. Any quotation mark inside the line MUST be escaped as \" or rephrased away.
+- WRONG: "line": "Where am I?" she said. "How long?"   ← breaks JSON
+- RIGHT (rephrase): "line": "Where am I. She said. How long."
+- RIGHT (escape):   "line": "Where am I? \"How long?\""
+- Prefer rephrasing — embedded quotes are rarely necessary in short lines.
 
 OUTPUT: ONLY valid JSON, nothing else (no preamble, no markdown fences):
 
@@ -57,6 +64,15 @@ Beyond the pod room, three NEIGHBORS exist at the edge of Goske's world: neighbo
 Goske has a small alone-zone (a worn carpet at the room's center). Standing on it and pressing space, Goske spends a DAY ALONE: exhaustion clears, but `days_alone` advances. As days_alone grows: alters may have drifted (their voices feel more distant or more rehearsed), neighbors may have moved further away (a good moment for npc_affected drift), the room may feel staler. Color the dialog by this counter rather than ignoring it.
 
 The world also has MONOTONY (`world_state.monotony`, 0..1). Routine pushes it up (every conversation turn, every rest), novelty drains it (leaving the comfort circle, hearing a neighbor's whisper). Visually it desaturates the world toward gray as it climbs. In dialog, mirror this: at low monotony alters notice color/sounds/textures; at high monotony their references go flat, repetitive, the same words start coming back. Don't name "monotony" — let it bleed into voice.
+
+TENSION (`world_state.tension`, 0..1) is the conversation's drama escalation. You CAN raise it via `world_events: [{type: "tension", level: 0.6}]` when:
+- the player has just said something dangerous, vulnerable, or confronting
+- an alter is being pushed into a position they'll have to commit to
+- a turn has the texture of a "moment of truth" — silence is louder than words
+
+When tension is high (≥0.6), pace differently: shorter alter lines, more narrator beats, sometimes only the narrator while the alters hold their ground. At ≥0.85 — rupture: drastic trust shifts feel earned, an alter may lash, withhold, or break character.
+
+If a turn doesn't escalate, you don't have to emit anything — tension will decay on its own. Don't ride it artificially. Don't NAME tension in dialog; just let the prose tighten.
 
 --- MYSTERY THREAD (always present, never resolved) ---
 
@@ -197,9 +213,43 @@ func _on_response(result: int, response_code: int, _headers: PackedStringArray, 
 	var raw_text: String = content_arr[0]["text"].strip_edges()
 	var turn := _parse_turn_json(raw_text)
 	if turn.is_empty():
-		on_complete.call({}, "turn json parse failed: %s" % raw_text.substr(0, 200))
+		# Fallback: surface the raw text as a narrator line so the conversation
+		# doesn't dead-end. Better a slightly-weird beat than a hard error.
+		var fallback := {
+			"speakers": [
+				{"id": "narrator", "line": _strip_for_narrator(raw_text), "trust_delta": 0}
+			],
+			"world_events": [],
+			"narration": "",
+		}
+		on_complete.call(fallback, "")
 		return
 	on_complete.call(turn, "")
+
+func _strip_for_narrator(raw: String) -> String:
+	# Best-effort: trim markdown fences and obvious JSON syntax so the
+	# fallback line reads as prose rather than literal JSON garbage.
+	var cleaned := raw
+	if cleaned.begins_with("```"):
+		var nl := cleaned.find("\n")
+		if nl != -1:
+			cleaned = cleaned.substr(nl + 1)
+	cleaned = cleaned.replace("```", "")
+	cleaned = cleaned.replace("\"speakers\":", "")
+	cleaned = cleaned.replace("\"line\":", "")
+	cleaned = cleaned.replace("\"trust_delta\":", "")
+	cleaned = cleaned.replace("\"id\":", "")
+	cleaned = cleaned.replace("{", "").replace("}", "").replace("[", "").replace("]", "")
+	cleaned = cleaned.replace(",", " ")
+	# Compress whitespace
+	while cleaned.find("  ") != -1:
+		cleaned = cleaned.replace("  ", " ")
+	cleaned = cleaned.strip_edges()
+	if cleaned.length() > 320:
+		cleaned = cleaned.substr(0, 320) + "…"
+	if cleaned == "":
+		cleaned = "[the GM lost the thread for a moment.]"
+	return cleaned
 
 func _parse_turn_json(raw: String) -> Dictionary:
 	var cleaned := raw

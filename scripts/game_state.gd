@@ -11,6 +11,8 @@ var alter_trust: Dictionary = {}  # alter_id -> int (0-100, default 50)
 var unlocked_alters: Array[String] = []
 var silenced_alters: Array[String] = []
 var exhaustion: int = 0  # 0-100
+var npc_intensity: Dictionary = {}  # npc_id -> float (0..1, Dragonrot severity)
+var days_alone: int = 0
 
 const TRUST_DEFAULT := 50
 const EXHAUSTION_PER_RESPONSE := 5
@@ -22,6 +24,8 @@ signal trust_changed(alter_id: String, new_value: int)
 signal alter_unlocked(alter_id: String)
 signal exhaustion_changed(new_value: int)
 signal alter_silenced(alter_id: String)
+signal npc_affected(npc_id: String, new_intensity: float)
+signal day_passed(new_days_alone: int)
 
 func _ready() -> void:
 	play_started_ms = Time.get_ticks_msec()
@@ -56,6 +60,23 @@ func is_unlocked(alter_id: String) -> bool:
 
 func is_silenced(alter_id: String) -> bool:
 	return alter_id in silenced_alters
+
+func rest() -> void:
+	# Spend a day alone: clear exhaustion, advance the day counter.
+	exhaustion = 0
+	_recovery_accumulator = 0.0
+	exhaustion_changed.emit(exhaustion)
+	days_alone += 1
+	day_passed.emit(days_alone)
+
+func update_npc_intensity(npc_id: String, intensity: float) -> void:
+	# Highest intensity wins (Dragonrot accumulates, doesn't undo).
+	var current: float = npc_intensity.get(npc_id, 0.0)
+	var new_val: float = clamp(max(current, intensity), 0.0, 1.0)
+	if new_val == current:
+		return
+	npc_intensity[npc_id] = new_val
+	npc_affected.emit(npc_id, new_val)
 
 func add_exhaustion(amount: int) -> void:
 	exhaustion = clamp(exhaustion + amount, 0, 100)

@@ -48,17 +48,19 @@ func _input(event: InputEvent) -> void:
 
 func _open() -> void:
 	opened = true
-	# Lid slides up
+	# Lid slides up — cubic ease-out: fast then settles
 	var lid := get_node_or_null(lid_path) as Node3D
 	if lid:
 		var tw := create_tween()
-		tw.tween_property(lid, "position:y", lid.position.y + 2.5, 0.6).set_trans(Tween.TRANS_CUBIC)
-	# Alter visible, stand up
+		tw.tween_property(lid, "position:y", lid.position.y + 2.6, 0.85) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	# Alter visible, stand up — back ease (slight overshoot, cinematic)
 	var alter := get_node_or_null(alter_root_path) as Node3D
 	if alter:
 		alter.visible = true
 		var tw2 := create_tween().set_parallel(true)
-		tw2.tween_property(alter, "rotation_degrees:x", 0.0, 0.5)
+		tw2.tween_property(alter, "rotation_degrees:x", 0.0, 0.9) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		var iarea: Area3D = alter.get_node_or_null("InteractionArea")
 		if iarea:
 			iarea.monitoring = true

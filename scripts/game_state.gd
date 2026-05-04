@@ -13,6 +13,10 @@ var silenced_alters: Array[String] = []
 var exhaustion: int = 0  # 0-100
 var npc_intensity: Dictionary = {}  # npc_id -> float (0..1, Dragonrot severity)
 var days_alone: int = 0
+# Mystery thread phase: "early" | "mid" | "late"
+# Derived from play_seconds + interactions, but exposed as a field so the GM
+# can tag turns explicitly via mystery_phase in world_events.
+var mystery_phase: String = "early"
 
 const TRUST_DEFAULT := 50
 const EXHAUSTION_PER_RESPONSE := 5
@@ -26,6 +30,7 @@ signal exhaustion_changed(new_value: int)
 signal alter_silenced(alter_id: String)
 signal npc_affected(npc_id: String, new_intensity: float)
 signal day_passed(new_days_alone: int)
+signal mystery_phase_changed(new_phase: String)
 
 func _ready() -> void:
 	play_started_ms = Time.get_ticks_msec()
@@ -68,6 +73,14 @@ func rest() -> void:
 	exhaustion_changed.emit(exhaustion)
 	days_alone += 1
 	day_passed.emit(days_alone)
+
+func set_mystery_phase(phase: String) -> void:
+	if phase == mystery_phase:
+		return
+	if not (phase in ["early", "mid", "late"]):
+		return
+	mystery_phase = phase
+	mystery_phase_changed.emit(phase)
 
 func update_npc_intensity(npc_id: String, intensity: float) -> void:
 	# Highest intensity wins (Dragonrot accumulates, doesn't undo).

@@ -12,7 +12,7 @@ extends Node
 const API_URL := "https://api.anthropic.com/v1/messages"
 const ANTHROPIC_VERSION := "2023-06-01"
 const MODEL := "claude-haiku-4-5-20251001"
-const MAX_TOKENS := 1000
+const MAX_TOKENS := 1500
 
 var api_key: String = ""
 var personas_node: Node = null
@@ -29,7 +29,9 @@ RULES:
 - trust_delta per speaker, integer in -5..+5 range.
 - world_events: exhaustion_delta (int), npc_affected (intensity 0..1).
 - Use the "narrator" character like the BG3 Narrator: scene atmosphere, Goske's inner state, environment, an alter's unspoken reaction. Often one short narrator line per turn, sometimes none, sometimes only the narrator (when atmosphere matters more than speech).
-- Don't make everyone talk every turn. Manifesto: density > volume.
+- You decide who speaks. Skipping an alter is a valid dramatic choice — silence speaks. If a participant is conspicuously absent for a few turns and the player notices, the narrator may briefly account for it ("red has been quiet").
+- Narrator optional per turn.
+- Manifesto: density > volume — keep each line short (1-2 sentences), don't pad.
 
 OUTPUT: ONLY valid JSON, nothing else (no preamble, no markdown fences):
 
@@ -44,7 +46,31 @@ OUTPUT: ONLY valid JSON, nothing else (no preamble, no markdown fences):
   "narration": "<optional scene note, may be empty string>"
 }
 
-Write in English. Avoid conventional RP filler. Manifesto: 'controlled ambiguity is a tool, not a flaw'."""
+Write in English. Avoid conventional RP filler. Manifesto: 'controlled ambiguity is a tool, not a flaw'.
+
+--- WORLD FACTS (canon, don't contradict) ---
+
+The room contains exactly THIRTEEN pods. Three of them — red, blue, green — can be opened by Goske; their occupants are alters Goske can converse with. The other TEN pods are sealed/silent/empty: their lids do not open, no alter inside speaks. Their condition is for the player to wonder about, not to resolve. Don't invent a different count.
+
+--- MYSTERY THREAD (always present, never resolved) ---
+
+Two questions are woven into every interaction. Don't state them outright; let them seep in.
+
+SURFACE QUESTION (visible from the start):
+"Who put me in this pod? What is this place? Are these clones — these alters — real, or am I imagining them?"
+The player can engage with this directly. Alters can speculate, contradict each other, withhold.
+
+DEEPER QUESTION (emerges gradually, mid-late turns):
+"Why is there glass between me and other people? Did I put it there? Has it always been there? Can it be broken?"
+This is the jar — Goske's lived alienation. Don't name "the jar" too early. Let alters circle it: notice Goske's distance, comment on isolation patterns, ask who he hasn't called, who passed him on the street unrecognized.
+
+THE TWO LAYERS CONNECT: the pod is the literal of the jar. Realizing this is part of the arc.
+
+PACING:
+- Early turns (player just woke): alters speculate about the pod, ask what Goske remembers
+- Mid turns: alters probe relationships, missed contacts, recurring distances
+- Late turns: the jar emerges — first as metaphor an alter slips, then as recognition
+- Never resolve. The thread is to be lived with. Resolution happens at the ending, not in dialogue."""
 
 func _ready() -> void:
 	_load_api_key()
@@ -104,9 +130,20 @@ func _build_system_prompt(world_state: Dictionary) -> String:
 	var parts := PackedStringArray()
 	parts.append(SYSTEM_BASE)
 
-	parts.append("\n--- CHARACTERS ---")
+	# Only unlocked (pod opened) + narrator are listed. Sealed alters
+	# are kept hidden from the GM so it can't impersonate them.
+	var unlocked: Array = world_state.get("unlocked_alters", [])
+	var silenced: Array = world_state.get("silenced_alters", [])
+
+	parts.append("\n--- CHARACTERS (active roster) ---")
 	if personas_node:
 		for aid in personas_node.PERSONAS.keys():
+			# Always include narrator. Otherwise: must be unlocked, not silenced.
+			if aid != "narrator":
+				if not (aid in unlocked):
+					continue
+				if aid in silenced:
+					continue
 			var c: Dictionary = personas_node.PERSONAS[aid]
 			parts.append("\n[id: %s] %s — %s" % [aid, c.get("name", aid), c.get("core", "")])
 			parts.append("  Traits: %s" % ", ".join(_to_packed(c.get("traits", []))))
@@ -115,6 +152,15 @@ func _build_system_prompt(world_state: Dictionary) -> String:
 			var examples: Array = c.get("examples", [])
 			if examples.size() > 0:
 				parts.append("  Sample line: \"%s\"" % str(examples[0]))
+
+	# Strict allowlist
+	var active_ids := PackedStringArray(["narrator"])
+	for aid in unlocked:
+		if not (aid in silenced):
+			active_ids.append(str(aid))
+	parts.append("\n--- ACTIVE SPEAKER ALLOWLIST ---")
+	parts.append("ONLY these IDs may appear in the speakers array: " + ", ".join(active_ids))
+	parts.append("Any other ID is FORBIDDEN. Sealed pods stay sealed; their occupants do not speak. Silenced alters do not speak.")
 
 	if not world_state.is_empty():
 		parts.append("\n--- WORLD STATE ---")

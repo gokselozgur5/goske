@@ -173,6 +173,9 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 	# Default exhaustion (if GM emitted no event) — +5 per speaker
 	if gs and not _events_have_exhaustion(events) and speakers.size() > 0:
 		gs.add_exhaustion(gs.EXHAUSTION_PER_RESPONSE * speakers.size())
+	# Monotony: every turn nudges routine upward
+	if gs and speakers.size() > 0:
+		gs.adjust_monotony(gs.MONOTONY_PER_RESPONSE * speakers.size())
 
 func _events_have_exhaustion(events: Array) -> bool:
 	for ev in events:
@@ -267,6 +270,7 @@ func _world_state() -> Dictionary:
 		"npc_intensity": gs.npc_intensity,
 		"days_alone": gs.days_alone,
 		"mystery_phase": gs.mystery_phase,
+		"monotony": gs.monotony,
 	}
 
 func _reset_conversation() -> void:

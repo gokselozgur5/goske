@@ -10,6 +10,7 @@
 [ext_resource type="Script" uid="uid://2cj0fqqhow04" path="res://scripts/npc.gd" id="8_npc_script"]
 [ext_resource type="Script" uid="uid://dyrtdg8dfeb8n" path="res://scripts/rest_zone.gd" id="9_rest_script"]
 [ext_resource type="Script" path="res://scripts/whisper.gd" id="10_whisper_script"]
+[ext_resource type="Script" path="res://scripts/world_environment_manager.gd" id="11_env_script"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat_1"]
 sky_horizon_color = Color(0.55, 0.65, 0.7, 1)
@@ -111,6 +112,7 @@ script = ExtResource("6_personas_script")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1082145321]
 environment = SubResource("Env_1")
+script = ExtResource("11_env_script")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=2070362642]
 transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, 10, 0)

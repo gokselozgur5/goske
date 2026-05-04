@@ -17,12 +17,19 @@ var days_alone: int = 0
 # Derived from play_seconds + interactions, but exposed as a field so the GM
 # can tag turns explicitly via mystery_phase in world_events.
 var mystery_phase: String = "early"
+# Monotony: routine accumulates, novelty drains. Drives the saturation
+# post-process — at 1.0 the world is grayscale, at 0.0 fully colored.
+var monotony: float = 0.0
 
 const TRUST_DEFAULT := 50
 const EXHAUSTION_PER_RESPONSE := 5
 const EXHAUSTION_BLACK_THRESHOLD := 70
 const EXHAUSTION_SILENCE_THRESHOLD := 90
 const EXHAUSTION_RECOVERY_PER_SEC := 0.8
+const MONOTONY_PER_RESPONSE := 0.018
+const MONOTONY_PER_REST := 0.05
+const MONOTONY_PER_COMFORT_EXIT := -0.04
+const MONOTONY_PER_WHISPER := -0.08
 
 signal trust_changed(alter_id: String, new_value: int)
 signal alter_unlocked(alter_id: String)
@@ -31,6 +38,7 @@ signal alter_silenced(alter_id: String)
 signal npc_affected(npc_id: String, new_intensity: float)
 signal day_passed(new_days_alone: int)
 signal mystery_phase_changed(new_phase: String)
+signal monotony_changed(new_value: float)
 
 func _ready() -> void:
 	play_started_ms = Time.get_ticks_msec()
@@ -41,6 +49,8 @@ func play_seconds() -> int:
 
 func record_comfort_exit() -> void:
 	comfort_exits += 1
+	# Stepping outside the comfort circle is novelty — pushes monotony down.
+	adjust_monotony(MONOTONY_PER_COMFORT_EXIT)
 
 func record_alter_engagement(alter_id: String) -> void:
 	alter_engagements[alter_id] = alter_engagements.get(alter_id, 0) + 1
@@ -73,6 +83,15 @@ func rest() -> void:
 	exhaustion_changed.emit(exhaustion)
 	days_alone += 1
 	day_passed.emit(days_alone)
+	# Resting is itself routine — adds to monotony
+	adjust_monotony(MONOTONY_PER_REST)
+
+func adjust_monotony(delta: float) -> void:
+	var new_val: float = clamp(monotony + delta, 0.0, 1.0)
+	if abs(new_val - monotony) < 0.0001:
+		return
+	monotony = new_val
+	monotony_changed.emit(monotony)
 
 func set_mystery_phase(phase: String) -> void:
 	if phase == mystery_phase:

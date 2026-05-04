@@ -20,6 +20,10 @@ func _ready() -> void:
 			n.whisper_requested.connect(_on_whisper_requested)
 
 func _on_whisper_requested(npc_id: String) -> void:
+	# A whisper is rare novelty — drains monotony noticeably
+	var gs := get_tree().get_first_node_in_group("game_state")
+	if gs:
+		gs.adjust_monotony(gs.MONOTONY_PER_WHISPER)
 	var gm := get_node_or_null("/root/Main/GameMaster")
 	if gm == null:
 		_show_text("...")

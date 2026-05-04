@@ -262,6 +262,9 @@ func _on_user_submit(text: String) -> void:
 	if trimmed == "/reset":
 		_reset_conversation()
 		return
+	if trimmed == "/ending":
+		_trigger_ending()
+		return
 	if participants.is_empty():
 		return
 	_append_user_line(trimmed)
@@ -288,6 +291,13 @@ func _world_state() -> Dictionary:
 		"monotony": gs.monotony,
 		"tension": gs.tension,
 	}
+
+func _trigger_ending() -> void:
+	# Close the conversation panel and show the ending overlay.
+	close()
+	var overlay := get_tree().get_first_node_in_group("ending_overlay")
+	if overlay and overlay.has_method("show_ending"):
+		overlay.show_ending()
 
 func _reset_conversation() -> void:
 	history.clear()

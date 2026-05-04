@@ -44,9 +44,9 @@ func is_open() -> bool:
 
 # Called when a pod opens
 func start_with_trigger(triggering_alter_id: String) -> void:
-	if visible:
-		return
-	_open_ui()
+	# If conversation already open, just merge new alters as participants.
+	if not visible:
+		_open_ui()
 	var all_alters := get_tree().get_nodes_in_group("alters")
 	var gs := get_tree().get_first_node_in_group("game_state")
 	var ordered_ids: Array[String] = []
@@ -85,12 +85,22 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 		history_label.append_text("[color=#aa6666]GM error: %s[/color]\n" % error)
 		return
 	var speakers: Array = turn.get("speakers", [])
+	var gs_for_filter := get_tree().get_first_node_in_group("game_state")
 	for sp in speakers:
 		var sid: String = str(sp.get("id", ""))
 		var line: String = str(sp.get("line", ""))
 		var trust_delta: int = int(sp.get("trust_delta", 0))
 		if sid == "" or line == "":
 			continue
+		# Defense: drop unauthorized speakers (sealed pods or silenced alters).
+		# Narrator is always allowed.
+		if sid != "narrator" and gs_for_filter != null:
+			if not gs_for_filter.is_unlocked(sid):
+				print("[GM] dropped unauthorized speaker (locked): ", sid)
+				continue
+			if gs_for_filter.is_silenced(sid):
+				print("[GM] dropped silenced speaker: ", sid)
+				continue
 		_append_alter_line(sid, line)
 		if trust_delta != 0:
 			_apply_trust_delta(sid, trust_delta)

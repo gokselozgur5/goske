@@ -231,6 +231,106 @@ mesh = SubResource("PodBoxMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("PodTriggerShape")
 
+[node name="DecorPod1" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, -2)
+
+[node name="Base" type="MeshInstance3D" parent="DecorPod1"]
+mesh = SubResource("PodBoxMesh")
+
+[node name="Lid" type="MeshInstance3D" parent="DecorPod1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("PodBoxMesh")
+
+[node name="DecorPod2" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -5)
+
+[node name="Base" type="MeshInstance3D" parent="DecorPod2"]
+mesh = SubResource("PodBoxMesh")
+
+[node name="Lid" type="MeshInstance3D" parent="DecorPod2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("PodBoxMesh")
+
+[node name="DecorPod3" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -6)
+
+[node name="Base" type="MeshInstance3D" parent="DecorPod3"]
+mesh = SubResource("PodBoxMesh")
+
+[node name="Lid" type="MeshInstance3D" parent="DecorPod3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("PodBoxMesh")
+
+[node name="DecorPod4" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -6)
+
+[node name="Base" type="MeshInstance3D" parent="DecorPod4"]
+mesh = SubResource("PodBoxMesh")
+
+[node name="Lid" type="MeshInstance3D" parent="DecorPod4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("PodBoxMesh")
+
+[node name="DecorPod5" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -5)
+
+[node name="Base" type="MeshInstance3D" parent="DecorPod5"]
+mesh = SubResource("PodBoxMesh")
+
+[node name="Lid" type="MeshInstance3D" parent="DecorPod5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("PodBoxMesh")
+
+[node name="DecorPod6" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, -2)
+
+[node name="Base" type="MeshInstance3D" parent="DecorPod6"]
+mesh = SubResource("PodBoxMesh")
+
+[node name="Lid" type="MeshInstance3D" parent="DecorPod6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("PodBoxMesh")
+
+[node name="DecorPod7" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, 2)
+
+[node name="Base" type="MeshInstance3D" parent="DecorPod7"]
+mesh = SubResource("PodBoxMesh")
+
+[node name="Lid" type="MeshInstance3D" parent="DecorPod7"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("PodBoxMesh")
+
+[node name="DecorPod8" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, 5)
+
+[node name="Base" type="MeshInstance3D" parent="DecorPod8"]
+mesh = SubResource("PodBoxMesh")
+
+[node name="Lid" type="MeshInstance3D" parent="DecorPod8"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("PodBoxMesh")
+
+[node name="DecorPod9" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 5)
+
+[node name="Base" type="MeshInstance3D" parent="DecorPod9"]
+mesh = SubResource("PodBoxMesh")
+
+[node name="Lid" type="MeshInstance3D" parent="DecorPod9"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("PodBoxMesh")
+
+[node name="DecorPod10" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, 2)
+
+[node name="Base" type="MeshInstance3D" parent="DecorPod10"]
+mesh = SubResource("PodBoxMesh")
+
+[node name="Lid" type="MeshInstance3D" parent="DecorPod10"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+mesh = SubResource("PodBoxMesh")
+
 [node name="UI" type="CanvasLayer" parent="." unique_id=1987622050]
 
 [node name="ExhaustionLabel" type="Label" parent="UI"]

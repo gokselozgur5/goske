@@ -56,6 +56,8 @@ Beyond the pod room, three NEIGHBORS exist at the edge of Goske's world: neighbo
 
 Goske has a small alone-zone (a worn carpet at the room's center). Standing on it and pressing space, Goske spends a DAY ALONE: exhaustion clears, but `days_alone` advances. As days_alone grows: alters may have drifted (their voices feel more distant or more rehearsed), neighbors may have moved further away (a good moment for npc_affected drift), the room may feel staler. Color the dialog by this counter rather than ignoring it.
 
+The world also has MONOTONY (`world_state.monotony`, 0..1). Routine pushes it up (every conversation turn, every rest), novelty drains it (leaving the comfort circle, hearing a neighbor's whisper). Visually it desaturates the world toward gray as it climbs. In dialog, mirror this: at low monotony alters notice color/sounds/textures; at high monotony their references go flat, repetitive, the same words start coming back. Don't name "monotony" — let it bleed into voice.
+
 --- MYSTERY THREAD (always present, never resolved) ---
 
 Two questions are woven into every interaction. Don't state them outright; let them seep in.

@@ -150,8 +150,13 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 		if sid == "" or line == "":
 			continue
 		# Defense: drop unauthorized speakers (sealed pods or silenced alters).
-		# Narrator is always allowed.
-		if sid != "narrator" and gs_for_filter != null:
+		# Narrator and meta (if eligible) are always allowed.
+		if sid == "meta":
+			if gs_for_filter == null or not gs_for_filter.meta_eligible():
+				print("[GM] dropped meta speaker: not eligible")
+				continue
+			gs_for_filter.meta_breaches += 1
+		elif sid != "narrator" and gs_for_filter != null:
 			if not gs_for_filter.is_unlocked(sid):
 				print("[GM] dropped unauthorized speaker (locked): ", sid)
 				continue
@@ -179,6 +184,11 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 	# Tension decay — if GM didn't emit a tension event this turn, drain a bit.
 	if gs and not _events_have_tension(events):
 		gs.decay_tension()
+	# Check if a production ending trigger has been met
+	if gs:
+		var reason: String = gs.check_ending_trigger()
+		if reason != "":
+			_trigger_ending_with_reason(reason)
 
 func _events_have_exhaustion(events: Array) -> bool:
 	for ev in events:
@@ -290,10 +300,24 @@ func _world_state() -> Dictionary:
 		"mystery_phase": gs.mystery_phase,
 		"monotony": gs.monotony,
 		"tension": gs.tension,
+		"meta_eligible": gs.meta_eligible(),
+		"meta_breaches_remaining": 2 - gs.meta_breaches,
 	}
 
 func _trigger_ending() -> void:
-	# Close the conversation panel and show the ending overlay.
+	# Manual debug trigger via /ending command.
+	close()
+	var overlay := get_tree().get_first_node_in_group("ending_overlay")
+	if overlay and overlay.has_method("show_ending"):
+		overlay.show_ending()
+
+func _trigger_ending_with_reason(reason: String) -> void:
+	# Production trigger — fired automatically when a threshold is hit.
+	# Marks ending_shown so it only fires once per run.
+	var gs := get_tree().get_first_node_in_group("game_state")
+	if gs:
+		gs.ending_shown = true
+	print("[Goske] ending triggered: %s" % reason)
 	close()
 	var overlay := get_tree().get_first_node_in_group("ending_overlay")
 	if overlay and overlay.has_method("show_ending"):
@@ -360,6 +384,12 @@ func _append_alter_line(alter_id: String, t: String) -> void:
 		var nar_content := "[narrator]: %s" % t
 		history.append({"role": "user", "content": nar_content, "alter_id": alter_id})
 		history_label.append_text("[color=#d4c5a0][i]%s[/i][/color]\n" % t)
+		return
+	if alter_id == "meta":
+		# 4th-wall breach — render distinctly: amber, bold-italic, ringed
+		var meta_content := "[META]: %s" % t
+		history.append({"role": "user", "content": meta_content, "alter_id": alter_id})
+		history_label.append_text("\n[color=#ffcc88][b][i]%s[/i][/b][/color]\n\n" % t)
 		return
 	var content := "[%s alter]: %s" % [alter_id, t]
 	history.append({"role": "user", "content": content, "alter_id": alter_id})

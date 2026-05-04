@@ -20,6 +20,8 @@ Living docs for the project. Read them when you stop trusting your own memory.
 - [ADR-008](ADR/ADR-008-awakening-fresh-start.md) — Awakening sends no prior history
 - [ADR-009](ADR/ADR-009-project-structure.md) — Project structure (scripts/, scenes/)
 - [ADR-010](ADR/ADR-010-english-everywhere.md) — English across all surfaces
+- [ADR-011](ADR/ADR-011-ending-production-triggers.md) — Ending production triggers
+- [ADR-012](ADR/ADR-012-fourth-wall-meta-breach.md) — 4th-wall meta breach (rare)
 
 ## When to write a new ADR
 

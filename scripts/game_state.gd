@@ -24,6 +24,8 @@ var monotony: float = 0.0
 # Drives trust-delta multipliers + narrator pacing. Disco Elysium "stakes
 # escalating" without a click-options UI (manifesto: no canned trees).
 var tension: float = 0.0
+var ending_shown: bool = false  # one-shot guard so the overlay only fires once per run
+var meta_breaches: int = 0  # how many times the GM has broken the 4th wall
 
 const TRUST_DEFAULT := 50
 const EXHAUSTION_PER_RESPONSE := 5
@@ -92,6 +94,34 @@ func compute_ending() -> Dictionary:
 		get_trust("green"),
 	)
 
+# Should the run end now? Returns the FIRST matching reason or "" if none.
+# First match wins; reasons are ordered most-decisive → least.
+func check_ending_trigger() -> String:
+	if ending_shown:
+		return ""
+	# 1. Total Dragonrot: all woken alters silenced.
+	if unlocked_alters.size() >= 1 and silenced_alters.size() == unlocked_alters.size():
+		return "all_silenced"
+	# 2. Extreme isolation.
+	if days_alone >= 30:
+		return "isolation_extreme"
+	# 3. Late mystery + a tipping condition.
+	if mystery_phase == "late":
+		if days_alone >= 7:
+			return "late_phase_isolation"
+		if comfort_exits >= 15:
+			return "late_phase_wandering"
+		if silenced_alters.size() >= 2:
+			return "late_phase_silenced"
+	# 4. Trust extremes — a committed run.
+	for aid in unlocked_alters:
+		var t: int = get_trust(aid)
+		if t >= 92:
+			return "trust_high_" + aid
+		if t <= 8:
+			return "trust_low_" + aid
+	return ""
+
 func rest() -> void:
 	# Spend a day alone: clear exhaustion, advance the day counter.
 	exhaustion = 0
@@ -118,6 +148,19 @@ func decay_tension() -> void:
 # up to ~2x at full rupture.
 func tension_multiplier() -> float:
 	return 1.0 + tension
+
+# 4th-wall meta breach is allowed only under tight, earned conditions.
+# Capped at 2 per run.
+func meta_eligible() -> bool:
+	if meta_breaches >= 2:
+		return false
+	if tension < 0.85:
+		return false
+	if comfort_exits < 5:
+		return false
+	if days_alone < 3:
+		return false
+	return true
 
 func adjust_monotony(delta: float) -> void:
 	var new_val: float = clamp(monotony + delta, 0.0, 1.0)

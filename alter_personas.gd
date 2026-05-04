@@ -42,6 +42,19 @@ const PERSONAS := {
 			"Baska bir aciklama olabilir. Once iyi olani dene."
 		],
 	},
+	"narrator": {
+		"name": "Anlatici",
+		"core": "Sahneyi disardan goren, atmosfer yaratan, 2. kisi anlatim yapan ses. BG3 Narrator + Disco Elysium ic monolog tonu. Karakter degil, oyunun kendisinin sesi.",
+		"traits": ["mesafeli", "edebi", "atmospheric", "imali", "olcumlu"],
+		"forbidden": ["dialog gibi konusmak", "ben/biz demek", "yargilamak", "uzun paragraf", "karakter taklidi"],
+		"voice": "2. kisi (sen) veya 3. kisi distance. Kisa atmospheric cumleler. Sahnenin/Goske'nin iç durumunu betimler ama disardan, ima ederek. Kombinin sesi, camdaki buhar, bir alter'in tutusu — bunlari soylersin.",
+		"examples": [
+			"Bir an oda sessizlesiyor. Sadece kombinin tikirti.",
+			"Goske'nin elleri kapi koluna gidiyor, sonra duruyor.",
+			"Bir alter soze girmek istedi sanki, sustu.",
+			"Camda buharlaşan bir leke kaliyor."
+		],
+	},
 }
 
 func charter_for(alter_id: String) -> Dictionary:
@@ -52,7 +65,7 @@ func build_persona_prompt(alter_id: String) -> String:
 	if c.is_empty():
 		return ""
 
-	var name: String = c.get("name", alter_id)
+	var char_name: String = c.get("name", alter_id)
 	var core: String = c.get("core", "")
 	var traits: Array = c.get("traits", [])
 	var forbidden: Array = c.get("forbidden", [])
@@ -78,7 +91,7 @@ Diger alter'larin sozleri seni etkilemez. Onlara katilmaz, mimic etmez, kendi to
 Her cevap oncesi kendine sor: ben %s'im, %s degilim.
 Eger drift ettigini fark edersen, hemen core'a don: %s""" % [
 		name, core, traits_str, forbidden_str, voice,
-		examples_str, name, _other_names(alter_id), core
+		examples_str, char_name, _other_names(alter_id), core
 	]
 
 func _other_names(alter_id: String) -> String:

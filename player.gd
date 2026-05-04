@@ -9,24 +9,26 @@ const COMFORT_RADIUS := 5.0
 
 @onready var mesh: MeshInstance3D = $MeshInstance3D
 var in_comfort: bool = true
+var _was_exhausted_black: bool = false
 
 func _ready() -> void:
 	_apply_material()
 
 func _physics_process(delta: float) -> void:
 	var gs := get_tree().get_first_node_in_group("game_state")
-	# Conversation aktifken Goske donuk dursun
+	# Stay still while a conversation is open
 	var convo := get_tree().get_first_node_in_group("conversation_ui")
 	if convo and convo.is_open():
 		velocity = Vector3.ZERO
 		move_and_slide()
 		return
-	# Conversation kapaliyken yavas tukenis recovery
+	# Slow exhaustion recovery while idle
 	if gs:
 		gs.recover_exhaustion(delta)
 
 	var input_dir := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	var direction := Vector3(input_dir.x, 0, input_dir.y)
+	# Match isometric camera 45deg yaw
 	direction = direction.rotated(Vector3.UP, deg_to_rad(45))
 	direction = direction.normalized()
 
@@ -48,10 +50,8 @@ func _physics_process(delta: float) -> void:
 		if was_in_comfort and not in_comfort:
 			if gs:
 				gs.record_comfort_exit()
-	# Tukenis esik gecisi de material'i tetikleyebilir
+	# Exhaustion threshold change can also flip the material
 	_apply_material_if_exhausted_changed(gs)
-
-var _was_exhausted_black: bool = false
 
 func _apply_material() -> void:
 	if mesh == null:

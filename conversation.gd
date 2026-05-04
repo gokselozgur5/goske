@@ -1,7 +1,7 @@
 extends Control
 
-# Conversation UI + Game Master entegrasyonu.
-# Tek API call, GM tum karakterleri yonetir, multi-speaker response.
+# Conversation UI + Game Master integration.
+# One API call per turn, GM dispatches multi-speaker response.
 
 const FALLBACK_GREETING := "..."
 
@@ -42,7 +42,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func is_open() -> bool:
 	return visible
 
-# Pod acildiginda cagrilir
+# Called when a pod opens
 func start_with_trigger(triggering_alter_id: String) -> void:
 	if visible:
 		return
@@ -61,7 +61,7 @@ func start_with_trigger(triggering_alter_id: String) -> void:
 			if not aid in participants:
 				participants.append(aid)
 		else:
-			# Yeni alter — GM'ye "X uyandi, ne diyor?" tarzi otomatik mesaj
+			# New alter — automatic prompt: "X just woke, only X speaks"
 			_request_alter_awakening(aid)
 			participants.append(aid)
 			greeted_alters.append(aid)
@@ -71,11 +71,10 @@ func _request_alter_awakening(alter_id: String) -> void:
 	if gm == null:
 		_append_alter_line(alter_id, FALLBACK_GREETING)
 		return
-	# History'e bir "kanka" mesaji koymadan, tek seferlik trigger
 	var temp_history: Array = history.duplicate()
 	temp_history.append({
 		"role": "user",
-		"content": "[%s alter henuz uyandi (kapsulden cikti). SADECE %s konussun, ilk sozunu soylesin.]" % [alter_id, alter_id],
+		"content": "[%s alter just woke up (left the pod). ONLY %s should speak — their first line.]" % [alter_id, alter_id],
 	})
 	gm.request_turn(temp_history, _world_state(), _on_gm_turn)
 
@@ -83,9 +82,8 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 	if not is_open():
 		return
 	if error != "":
-		history_label.append_text("[color=#aa6666]GM hata: %s[/color]\n" % error)
+		history_label.append_text("[color=#aa6666]GM error: %s[/color]\n" % error)
 		return
-	# Speakers
 	var speakers: Array = turn.get("speakers", [])
 	for sp in speakers:
 		var sid: String = str(sp.get("id", ""))
@@ -96,7 +94,7 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 		_append_alter_line(sid, line)
 		if trust_delta != 0:
 			_apply_trust_delta(sid, trust_delta)
-	# Narration (opsiyonel) — narrator speaker olarak history'e ekle
+	# Narration (optional) — append as narrator speaker so it persists
 	var narration: String = str(turn.get("narration", "")).strip_edges()
 	if narration != "":
 		_append_alter_line("narrator", narration)
@@ -105,7 +103,7 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 	var gs := get_tree().get_first_node_in_group("game_state")
 	for ev in events:
 		_apply_world_event(ev, gs)
-	# Default tukenis (GM event vermediyse) — alter konustuysa exhaustion +5 per speaker
+	# Default exhaustion (if GM emitted no event) — +5 per speaker
 	if gs and not _events_have_exhaustion(events) and speakers.size() > 0:
 		gs.add_exhaustion(gs.EXHAUSTION_PER_RESPONSE * speakers.size())
 
@@ -125,10 +123,10 @@ func _apply_world_event(ev: Dictionary, gs) -> void:
 			if amt != 0:
 				gs.add_exhaustion(amt)
 		"npc_affected":
-			# NPC sistemi henuz yok - log
+			# NPC system not implemented yet — log
 			print("[GM] npc_affected: ", ev)
 		_:
-			print("[GM] bilinmeyen world_event: ", ev)
+			print("[GM] unknown world_event: ", ev)
 
 func _apply_trust_delta(alter_id: String, delta: int) -> void:
 	if delta == 0:
@@ -145,14 +143,13 @@ func _open_ui() -> void:
 	history_label.clear()
 	for entry in history:
 		var aid: String = entry.get("alter_id", "")
-		# History'de content "[X alter]: ..." prefix'li, sadece line kismini cikar
 		var raw_content: String = str(entry["content"])
 		var line_only: String = raw_content
 		var idx := raw_content.find("]: ")
 		if idx != -1:
 			line_only = raw_content.substr(idx + 3)
 		if aid == "":
-			history_label.append_text("[color=#dddddd][b]kanka:[/b] %s[/color]\n" % raw_content)
+			history_label.append_text("[color=#dddddd][b]you:[/b] %s[/color]\n" % raw_content)
 		elif aid == "narrator":
 			history_label.append_text("[color=#d4c5a0][i]%s[/i][/color]\n" % line_only)
 		else:
@@ -194,7 +191,7 @@ func _reset_conversation() -> void:
 	history.clear()
 	greeted_alters.clear()
 	history_label.clear()
-	history_label.append_text("[color=#888888]— history sifirlandi —[/color]\n")
+	history_label.append_text("[color=#888888]— history reset —[/color]\n")
 	var gs := get_tree().get_first_node_in_group("game_state")
 	if gs:
 		for aid in ["red", "blue", "green"]:
@@ -206,7 +203,7 @@ func _on_trust_changed(_alter_id: String, new_value: int) -> void:
 
 func _on_alter_silenced(alter_id: String) -> void:
 	if visible:
-		history_label.append_text("[color=#888888]— %s alter sessizlesti, kapsule geri kapandi —[/color]\n" % alter_id)
+		history_label.append_text("[color=#888888]— %s alter went silent, sealed back in pod —[/color]\n" % alter_id)
 	participants.erase(alter_id)
 
 func _on_exhaustion_changed(_new_value: int) -> void:
@@ -219,7 +216,7 @@ func _refresh_exhaustion_label() -> void:
 	var gs := get_tree().get_first_node_in_group("game_state")
 	if gs == null:
 		return
-	ex_label.text = "tukenis %d/100" % gs.exhaustion
+	ex_label.text = "exhaustion %d/100" % gs.exhaustion
 	var t: float = float(gs.exhaustion) / 100.0
 	ex_label.add_theme_color_override("font_color", Color(0.4 + t * 0.6, 0.7 - t * 0.4, 0.4 - t * 0.3, 1.0))
 
@@ -244,13 +241,12 @@ func _set_trust_label(alter_id: String, value: int) -> void:
 
 func _append_user_line(t: String) -> void:
 	history.append({"role": "user", "content": t, "alter_id": ""})
-	history_label.append_text("[color=#dddddd][b]kanka:[/b] %s[/color]\n" % t)
+	history_label.append_text("[color=#dddddd][b]you:[/b] %s[/color]\n" % t)
 
 func _append_alter_line(alter_id: String, t: String) -> void:
 	if alter_id == "narrator":
 		var nar_content := "[narrator]: %s" % t
 		history.append({"role": "user", "content": nar_content, "alter_id": alter_id})
-		# BG3 tarzi italic + krem, name prefix yok
 		history_label.append_text("[color=#d4c5a0][i]%s[/i][/color]\n" % t)
 		return
 	var content := "[%s alter]: %s" % [alter_id, t]

@@ -82,6 +82,16 @@ func is_unlocked(alter_id: String) -> bool:
 func is_silenced(alter_id: String) -> bool:
 	return alter_id in silenced_alters
 
+func compute_ending() -> Dictionary:
+	var endings_node := get_node_or_null("/root/Main/Endings")
+	if endings_node == null or not endings_node.has_method("compute_ending"):
+		return {}
+	return endings_node.compute_ending(
+		get_trust("red"),
+		get_trust("blue"),
+		get_trust("green"),
+	)
+
 func rest() -> void:
 	# Spend a day alone: clear exhaustion, advance the day counter.
 	exhaustion = 0

@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://boyah0h572vve" path="res://player.gd" id="1_player_script"]
 [ext_resource type="Script" uid="uid://byqdhdyv0iu55" path="res://alter.gd" id="2_alter_script"]
 [ext_resource type="Script" uid="uid://bgrqpnxh3eh7k" path="res://conversation.gd" id="3_conversation_script"]
-[ext_resource type="Script" uid="uid://d31reepjbkfia" path="res://llm_client.gd" id="4_llm_script"]
+[ext_resource type="Script" path="res://game_master.gd" id="4_llm_script"]
 [ext_resource type="Script" path="res://game_state.gd" id="5_state_script"]
 [ext_resource type="Script" path="res://alter_personas.gd" id="6_personas_script"]
 [ext_resource type="Script" path="res://pod.gd" id="7_pod_script"]
@@ -86,7 +86,7 @@ roughness = 0.55
 
 [node name="Main" type="Node3D" unique_id=1537371910]
 
-[node name="LLMClient" type="Node" parent="." unique_id=908019963]
+[node name="GameMaster" type="Node" parent="." unique_id=908019963]
 script = ExtResource("4_llm_script")
 
 [node name="GameState" type="Node" parent="."]

@@ -12,7 +12,7 @@ extends Node
 const API_URL := "https://api.anthropic.com/v1/messages"
 const ANTHROPIC_VERSION := "2023-06-01"
 const MODEL := "claude-haiku-4-5-20251001"
-const MAX_TOKENS := 1500
+const MAX_TOKENS := 2500
 
 var api_key: String = ""
 var personas_node: Node = null
@@ -51,6 +51,10 @@ Write in English. Avoid conventional RP filler. Manifesto: 'controlled ambiguity
 --- WORLD FACTS (canon, don't contradict) ---
 
 The room contains exactly THIRTEEN pods. Three of them — red, blue, green — can be opened by Goske; their occupants are alters Goske can converse with. The other TEN pods are sealed/silent/empty: their lids do not open, no alter inside speaks. Their condition is for the player to wonder about, not to resolve. Don't invent a different count.
+
+Beyond the pod room, three NEIGHBORS exist at the edge of Goske's world: neighbor_1, neighbor_2, neighbor_3. They are not characters Goske meets directly — they are the people on the other side of the jar's glass. They have NO spoken dialogue (don't put them in the speakers array). The alters/narrator may reference them obliquely ("the woman in 5B", "the man across the hall", "the one who used to wave"). The only way they enter mechanics is via the npc_affected world_event: emit it with intensity 0..1 to visually drain a neighbor toward gray (Dragonrot infection). Use sparingly, only when exhaustion/alter dynamics genuinely propagate outward. Don't invent NPC ids beyond neighbor_1/2/3.
+
+Goske has a small alone-zone (a worn carpet at the room's center). Standing on it and pressing space, Goske spends a DAY ALONE: exhaustion clears, but `days_alone` advances. As days_alone grows: alters may have drifted (their voices feel more distant or more rehearsed), neighbors may have moved further away (a good moment for npc_affected drift), the room may feel staler. Color the dialog by this counter rather than ignoring it.
 
 --- MYSTERY THREAD (always present, never resolved) ---
 

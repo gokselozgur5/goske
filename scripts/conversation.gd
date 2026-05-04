@@ -31,8 +31,21 @@ func _connect_state_signals() -> void:
 			gs.alter_silenced.connect(_on_alter_silenced)
 		if not gs.exhaustion_changed.is_connected(_on_exhaustion_changed):
 			gs.exhaustion_changed.connect(_on_exhaustion_changed)
+		if not gs.day_passed.is_connected(_on_day_passed):
+			gs.day_passed.connect(_on_day_passed)
 	_refresh_all_trust_labels()
 	_refresh_exhaustion_label()
+
+func _on_day_passed(new_days_alone: int) -> void:
+	# Always note the rest in history (even if convo is closed it'll
+	# show next time the panel opens).
+	history.append({
+		"role": "user",
+		"content": "[Goske spent a day alone. Total days alone: %d.]" % new_days_alone,
+		"alter_id": "narrator",
+	})
+	if visible:
+		history_label.append_text("[color=#888888][i]— a day passes alone (total: %d) —[/i][/color]\n" % new_days_alone)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if visible and event.is_action_pressed("ui_cancel"):
@@ -71,12 +84,14 @@ func _request_alter_awakening(alter_id: String) -> void:
 	if gm == null:
 		_append_alter_line(alter_id, FALLBACK_GREETING)
 		return
-	var temp_history: Array = history.duplicate()
-	temp_history.append({
+	# Fresh awakening — DON'T pass prior history. The new alter has no
+	# memory of conversations Goske had with other alters; they should
+	# sound disoriented, just-emerged, not as if they were eavesdropping.
+	var awakening_only: Array = [{
 		"role": "user",
-		"content": "[%s alter just woke up (left the pod). ONLY %s should speak — their first line.]" % [alter_id, alter_id],
-	})
-	gm.request_turn(temp_history, _world_state(), _on_gm_turn)
+		"content": "[%s alter has just woken up — their pod just opened. They have NO knowledge of any conversation that came before. ONLY %s should speak; their first line should sound disoriented, freshly emerged, asking where/who. Do not reference prior dialogue.]" % [alter_id, alter_id],
+	}]
+	gm.request_turn(awakening_only, _world_state(), _on_gm_turn)
 
 func _on_gm_turn(turn: Dictionary, error: String) -> void:
 	if not is_open():
@@ -133,8 +148,16 @@ func _apply_world_event(ev: Dictionary, gs) -> void:
 			if amt != 0:
 				gs.add_exhaustion(amt)
 		"npc_affected":
-			# NPC system not implemented yet — log
-			print("[GM] npc_affected: ", ev)
+			var npc_id: String = str(ev.get("npc_id", ""))
+			var intensity: float = float(ev.get("intensity", 0.0))
+			if npc_id == "":
+				return
+			gs.update_npc_intensity(npc_id, intensity)
+			# Push the resolved intensity to the NPC node, if present
+			for n in get_tree().get_nodes_in_group("npcs"):
+				if n.has_method("set_intensity") and n.npc_id == npc_id:
+					n.set_intensity(gs.npc_intensity.get(npc_id, 0.0))
+					break
 		_:
 			print("[GM] unknown world_event: ", ev)
 
@@ -195,6 +218,9 @@ func _world_state() -> Dictionary:
 		"silenced_alters": gs.silenced_alters,
 		"comfort_exits": gs.comfort_exits,
 		"play_seconds": gs.play_seconds(),
+		"npcs": ["neighbor_1", "neighbor_2", "neighbor_3"],
+		"npc_intensity": gs.npc_intensity,
+		"days_alone": gs.days_alone,
 	}
 
 func _reset_conversation() -> void:

@@ -34,14 +34,17 @@ func _on_body_exited(body: Node) -> void:
 		player_in_range = false
 
 func _input(event: InputEvent) -> void:
-	if opened or not player_in_range:
+	if not player_in_range:
 		return
-	# Conversation aciksa Space LineEdit'e gider, pod acma yapma
 	var convo := get_tree().get_first_node_in_group("conversation_ui")
 	if convo and convo.is_open():
 		return
 	if event.is_action_pressed("ui_accept"):
-		_open()
+		if not opened:
+			_open()
+		elif convo != null:
+			# Pod zaten acik - convo yeniden ac (history persist olur)
+			convo.start_with_trigger(alter_id)
 
 func _open() -> void:
 	opened = true

@@ -176,10 +176,19 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 	# Monotony: every turn nudges routine upward
 	if gs and speakers.size() > 0:
 		gs.adjust_monotony(gs.MONOTONY_PER_RESPONSE * speakers.size())
+	# Tension decay — if GM didn't emit a tension event this turn, drain a bit.
+	if gs and not _events_have_tension(events):
+		gs.decay_tension()
 
 func _events_have_exhaustion(events: Array) -> bool:
 	for ev in events:
 		if ev.get("type", "") == "exhaustion_delta":
+			return true
+	return false
+
+func _events_have_tension(events: Array) -> bool:
+	for ev in events:
+		if ev.get("type", "") == "tension":
 			return true
 	return false
 
@@ -206,6 +215,9 @@ func _apply_world_event(ev: Dictionary, gs) -> void:
 		"mystery_phase":
 			var phase: String = str(ev.get("phase", ""))
 			gs.set_mystery_phase(phase)
+		"tension":
+			var lvl: float = float(ev.get("level", 0.0))
+			gs.set_tension(lvl)
 		_:
 			print("[GM] unknown world_event: ", ev)
 
@@ -213,8 +225,11 @@ func _apply_trust_delta(alter_id: String, delta: int) -> void:
 	if delta == 0:
 		return
 	var gs := get_tree().get_first_node_in_group("game_state")
-	if gs:
-		gs.adjust_trust(alter_id, delta)
+	if gs == null:
+		return
+	# Amplify under tension — escalating moments hit harder.
+	var amplified: int = roundi(float(delta) * gs.tension_multiplier())
+	gs.adjust_trust(alter_id, amplified)
 
 func close() -> void:
 	hide()
@@ -271,6 +286,7 @@ func _world_state() -> Dictionary:
 		"days_alone": gs.days_alone,
 		"mystery_phase": gs.mystery_phase,
 		"monotony": gs.monotony,
+		"tension": gs.tension,
 	}
 
 func _reset_conversation() -> void:

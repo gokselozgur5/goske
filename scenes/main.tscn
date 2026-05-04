@@ -25,6 +25,18 @@ background_mode = 2
 sky = SubResource("Sky_1")
 ambient_light_source = 3
 tonemap_mode = 2
+tonemap_exposure = 1.05
+ssao_enabled = true
+ssao_intensity = 1.5
+ssao_radius = 1.0
+glow_enabled = true
+glow_intensity = 0.4
+glow_strength = 0.9
+glow_bloom = 0.05
+fog_enabled = true
+fog_density = 0.012
+fog_light_color = Color(0.55, 0.6, 0.65, 1)
+fog_aerial_perspective = 0.3
 
 [sub_resource type="StandardMaterial3D" id="GrassMat_1"]
 albedo_color = Color(0.35, 0.5, 0.25, 1)
@@ -486,6 +498,8 @@ size_flags_vertical = 3
 theme_override_font_sizes/normal_font_size = 28
 theme_override_font_sizes/bold_font_size = 28
 theme_override_font_sizes/italics_font_size = 28
+theme_override_constants/line_separation = 8
+theme_override_constants/paragraph_separation = 4
 bbcode_enabled = true
 fit_content = true
 scroll_following = true

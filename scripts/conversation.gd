@@ -33,8 +33,12 @@ func _connect_state_signals() -> void:
 			gs.exhaustion_changed.connect(_on_exhaustion_changed)
 		if not gs.day_passed.is_connected(_on_day_passed):
 			gs.day_passed.connect(_on_day_passed)
+		if not gs.mystery_phase_changed.is_connected(_on_mystery_phase_changed):
+			gs.mystery_phase_changed.connect(_on_mystery_phase_changed)
 	_refresh_all_trust_labels()
 	_refresh_exhaustion_label()
+	_refresh_mystery_label()
+	_refresh_days_alone_label()
 
 func _on_day_passed(new_days_alone: int) -> void:
 	# Always note the rest in history (even if convo is closed it'll
@@ -46,6 +50,44 @@ func _on_day_passed(new_days_alone: int) -> void:
 	})
 	if visible:
 		history_label.append_text("[color=#888888][i]— a day passes alone (total: %d) —[/i][/color]\n" % new_days_alone)
+	_refresh_days_alone_label()
+
+func _on_mystery_phase_changed(new_phase: String) -> void:
+	_refresh_mystery_label()
+	# Subtle in-history beat — the world has shifted underneath
+	history.append({
+		"role": "user",
+		"content": "[Mystery thread phase advanced to: %s. Color subsequent dialogue accordingly.]" % new_phase,
+		"alter_id": "narrator",
+	})
+	if visible:
+		history_label.append_text("[color=#a09cb0][i]— the air thickens · phase: %s —[/i][/color]\n" % new_phase)
+
+func _refresh_mystery_label() -> void:
+	var label: Label = get_node_or_null("/root/Main/UI/MysteryLabel")
+	if label == null:
+		return
+	var gs := get_tree().get_first_node_in_group("game_state")
+	if gs == null:
+		return
+	label.text = "mystery · %s" % gs.mystery_phase
+	# Phase color: early=lavender, mid=warmer, late=ember
+	match gs.mystery_phase:
+		"early":
+			label.add_theme_color_override("font_color", Color(0.82, 0.78, 0.92, 1))
+		"mid":
+			label.add_theme_color_override("font_color", Color(0.92, 0.78, 0.65, 1))
+		"late":
+			label.add_theme_color_override("font_color", Color(0.95, 0.55, 0.4, 1))
+
+func _refresh_days_alone_label() -> void:
+	var label: Label = get_node_or_null("/root/Main/UI/DaysAloneLabel")
+	if label == null:
+		return
+	var gs := get_tree().get_first_node_in_group("game_state")
+	if gs == null:
+		return
+	label.text = "days alone · %d" % gs.days_alone
 
 func _unhandled_input(event: InputEvent) -> void:
 	if visible and event.is_action_pressed("ui_cancel"):
@@ -158,6 +200,9 @@ func _apply_world_event(ev: Dictionary, gs) -> void:
 				if n.has_method("set_intensity") and n.npc_id == npc_id:
 					n.set_intensity(gs.npc_intensity.get(npc_id, 0.0))
 					break
+		"mystery_phase":
+			var phase: String = str(ev.get("phase", ""))
+			gs.set_mystery_phase(phase)
 		_:
 			print("[GM] unknown world_event: ", ev)
 
@@ -221,6 +266,7 @@ func _world_state() -> Dictionary:
 		"npcs": ["neighbor_1", "neighbor_2", "neighbor_3"],
 		"npc_intensity": gs.npc_intensity,
 		"days_alone": gs.days_alone,
+		"mystery_phase": gs.mystery_phase,
 	}
 
 func _reset_conversation() -> void:

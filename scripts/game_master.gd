@@ -27,7 +27,7 @@ RULES:
 - You decide which character(s) speak each turn. Not all of them must speak. One alter may stay silent, only the narrator may speak, etc. Pick what is meaningful.
 - Silenced characters NEVER speak.
 - trust_delta per speaker, integer in -5..+5 range.
-- world_events: exhaustion_delta (int), npc_affected (intensity 0..1).
+- world_events: exhaustion_delta (int), npc_affected (intensity 0..1), mystery_phase ("early"|"mid"|"late").
 - Use the "narrator" character like the BG3 Narrator: scene atmosphere, Goske's inner state, environment, an alter's unspoken reaction. Often one short narrator line per turn, sometimes none, sometimes only the narrator (when atmosphere matters more than speech).
 - You decide who speaks. Skipping an alter is a valid dramatic choice — silence speaks. If a participant is conspicuously absent for a few turns and the player notices, the narrator may briefly account for it ("red has been quiet").
 - Narrator optional per turn.
@@ -70,10 +70,11 @@ This is the jar — Goske's lived alienation. Don't name "the jar" too early. Le
 
 THE TWO LAYERS CONNECT: the pod is the literal of the jar. Realizing this is part of the arc.
 
-PACING:
-- Early turns (player just woke): alters speculate about the pod, ask what Goske remembers
-- Mid turns: alters probe relationships, missed contacts, recurring distances
-- Late turns: the jar emerges — first as metaphor an alter slips, then as recognition
+PACING (current phase is in world_state.mystery_phase):
+- "early" — alters speculate about the pod, ask what Goske remembers, jar metaphor not named
+- "mid" — alters probe relationships, missed contacts, recurring distances; jar metaphor begins to surface obliquely
+- "late" — the jar emerges: first as metaphor an alter slips, then as recognition
+- You may emit `world_events: [{type: "mystery_phase", phase: "mid"}]` to advance the phase when the conversation has earned it (don't rush; treat phase changes as quiet thresholds, not announcements)
 - Never resolve. The thread is to be lived with. Resolution happens at the ending, not in dialogue."""
 
 func _ready() -> void:

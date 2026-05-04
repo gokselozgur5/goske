@@ -9,6 +9,7 @@
 [ext_resource type="Script" uid="uid://dleau86d8lmva" path="res://scripts/pod.gd" id="7_pod_script"]
 [ext_resource type="Script" uid="uid://2cj0fqqhow04" path="res://scripts/npc.gd" id="8_npc_script"]
 [ext_resource type="Script" uid="uid://dyrtdg8dfeb8n" path="res://scripts/rest_zone.gd" id="9_rest_script"]
+[ext_resource type="Script" path="res://scripts/whisper.gd" id="10_whisper_script"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat_1"]
 sky_horizon_color = Color(0.55, 0.65, 0.7, 1)
@@ -383,6 +384,48 @@ base_color = Color(0.66, 0.56, 0.5, 1)
 mesh = SubResource("CapsuleMesh_shared")
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=1987622050]
+
+[node name="WhisperPanel" type="Control" parent="UI"]
+script = ExtResource("10_whisper_script")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Center" type="CenterContainer" parent="UI/WhisperPanel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -180.0
+offset_bottom = -120.0
+
+[node name="Label" type="Label" parent="UI/WhisperPanel/Center"]
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+custom_minimum_size = Vector2(900, 0)
+theme_override_font_sizes/font_size = 30
+theme_override_colors/font_color = Color(0.85, 0.82, 0.78, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.7)
+theme_override_constants/outline_size = 6
+
+[node name="MysteryLabel" type="Label" parent="UI"]
+offset_left = 24.0
+offset_top = 20.0
+offset_right = 360.0
+offset_bottom = 56.0
+text = "mystery · early"
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.82, 0.78, 0.92, 1)
+
+[node name="DaysAloneLabel" type="Label" parent="UI"]
+offset_left = 24.0
+offset_top = 58.0
+offset_right = 360.0
+offset_bottom = 92.0
+text = "days alone · 0"
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.7, 0.65, 0.6, 1)
 
 [node name="ExhaustionLabel" type="Label" parent="UI" unique_id=537884291]
 anchors_preset = 1

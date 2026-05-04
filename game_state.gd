@@ -28,7 +28,7 @@ func _ready() -> void:
 	add_to_group("game_state")
 
 func play_seconds() -> int:
-	return int((Time.get_ticks_msec() - play_started_ms) / 1000)
+	return int(float(Time.get_ticks_msec() - play_started_ms) / 1000.0)
 
 func record_comfort_exit() -> void:
 	comfort_exits += 1
@@ -66,15 +66,11 @@ func add_exhaustion(amount: int) -> void:
 func recover_exhaustion(delta: float) -> void:
 	if exhaustion <= 0:
 		return
-	# Float ile hesapla, int'e cevir
-	var step: int = int(EXHAUSTION_RECOVERY_PER_SEC * delta * 10.0) / 10
-	if step < 1:
-		# delta kucuk olabilir, biriktirip uygulayalim
-		_recovery_accumulator += EXHAUSTION_RECOVERY_PER_SEC * delta
-		if _recovery_accumulator >= 1.0:
-			step = int(_recovery_accumulator)
-			_recovery_accumulator -= float(step)
-	if step > 0:
+	# Float biriktir, int'e cevirip uygula
+	_recovery_accumulator += EXHAUSTION_RECOVERY_PER_SEC * delta
+	if _recovery_accumulator >= 1.0:
+		var step: int = int(_recovery_accumulator)
+		_recovery_accumulator -= float(step)
 		exhaustion = clamp(exhaustion - step, 0, 100)
 		exhaustion_changed.emit(exhaustion)
 

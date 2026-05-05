@@ -8,6 +8,7 @@ const COMFORT_RADIUS := 5.0
 @export var black_mat: StandardMaterial3D
 
 @onready var mesh: MeshInstance3D = $MeshInstance3D
+@onready var head_mesh: MeshInstance3D = $HeadMesh
 var in_comfort: bool = true
 var _was_exhausted_black: bool = false
 
@@ -66,10 +67,11 @@ func _apply_material() -> void:
 	if gs != null and gs.exhaustion >= gs.EXHAUSTION_BLACK_THRESHOLD:
 		exhausted = true
 	var should_be_black: bool = (not in_comfort) or exhausted
-	if should_be_black and black_mat:
-		mesh.set_surface_override_material(0, black_mat)
-	elif not should_be_black and goske_mat:
-		mesh.set_surface_override_material(0, goske_mat)
+	var target_mat = black_mat if should_be_black else goske_mat
+	if target_mat:
+		mesh.set_surface_override_material(0, target_mat)
+		if head_mesh:
+			head_mesh.set_surface_override_material(0, target_mat)
 	_was_exhausted_black = exhausted
 
 func _apply_material_if_exhausted_changed(gs) -> void:

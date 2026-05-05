@@ -6,6 +6,7 @@ Living docs for the project. Read them when you stop trusting your own memory.
 
 - **[GDD.md](GDD.md)** — game design overview. Premise, pillars, mechanics summary, scope.
 - **[journey.md](journey.md)** — single-run player flow + pressure axes + state-event diagram.
+- **[DEPLOY.md](DEPLOY.md)** — deploy walkthrough: Cloudflare Worker proxy + Godot Web export + Pages.
 - **[ADR/](ADR/)** — architecture decision records, one per major call. Read these when you're tempted to undo a past decision; future-you wrote them for present-you.
 
 ## ADR index

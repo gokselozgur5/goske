@@ -1,0 +1,13 @@
+# Cloudflare Pages headers — copied into web/ at build time.
+# We export Godot with thread_support=false, so we DON'T need
+# Cross-Origin-{Embedder,Opener}-Policy. If you ever flip that on,
+# uncomment the COEP/COOP block below.
+
+/*
+  Cache-Control: public, max-age=3600
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+
+# /*
+#   Cross-Origin-Embedder-Policy: require-corp
+#   Cross-Origin-Opener-Policy: same-origin

@@ -16,11 +16,36 @@ const NARRATION_TIMEOUT := 12.0  # seconds before falling back to static
 
 var _waiting: bool = false
 var _ending: Dictionary = {}
+var _hint_label: Label = null
 
 func _ready() -> void:
 	add_to_group("ending_overlay")
 	hide()
 	modulate.a = 0.0
+	_build_hint_label()
+
+func _build_hint_label() -> void:
+	_hint_label = Label.new()
+	_hint_label.text = "enter — play again        esc — dismiss"
+	_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hint_label.add_theme_font_size_override("font_size", 16)
+	_hint_label.add_theme_color_override("font_color", Color(0.55, 0.55, 0.60))
+	_hint_label.anchor_top = 1.0
+	_hint_label.anchor_bottom = 1.0
+	_hint_label.anchor_left = 0.5
+	_hint_label.anchor_right = 0.5
+	_hint_label.offset_top = -64
+	_hint_label.offset_bottom = -32
+	_hint_label.offset_left = -260
+	_hint_label.offset_right = 260
+	_hint_label.modulate.a = 0.0
+	add_child(_hint_label)
+
+func _show_hint() -> void:
+	if _hint_label == null:
+		return
+	var tw := create_tween()
+	tw.tween_property(_hint_label, "modulate:a", 1.0, 0.9)
 
 func show_ending() -> void:
 	var gs := get_tree().get_first_node_in_group("game_state")
@@ -33,6 +58,8 @@ func show_ending() -> void:
 	label.text = str(e.get("label", ""))
 	# Loading state — single ellipsis until the GM responds (or timeout).
 	theme_label.text = "…"
+	if _hint_label:
+		_hint_label.modulate.a = 0.0
 	coords_label.text = "red %d   blue %d   green %d   ·   days alone %d" % [
 		gs.get_trust("red"), gs.get_trust("blue"), gs.get_trust("green"), gs.days_alone
 	]
@@ -123,6 +150,7 @@ func _on_narration(turn: Dictionary, error: String) -> void:
 		_apply_fallback(str(_ending.get("theme", "")))
 		return
 	theme_label.text = line
+	_show_hint()
 
 func _on_narration_timeout() -> void:
 	if not _waiting:
@@ -134,10 +162,18 @@ func _apply_fallback(text: String) -> void:
 	if text == "" or text == null:
 		text = str(_ending.get("theme", "—"))
 	theme_label.text = text
+	_show_hint()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if visible and event.is_action_pressed("ui_cancel"):
+	if not visible:
+		return
+	if event.is_action_pressed("ui_cancel"):
 		_dismiss()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_accept"):
+		# Enter / Space → play again. Reload to the title screen so the next
+		# run starts fresh (no autoloads — scene change resets state).
+		_play_again()
 		get_viewport().set_input_as_handled()
 
 func _dismiss() -> void:
@@ -145,3 +181,9 @@ func _dismiss() -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, 0.6)
 	tw.tween_callback(hide)
+
+func _play_again() -> void:
+	_waiting = false
+	var tw := create_tween()
+	tw.tween_property(self, "modulate:a", 0.0, 0.8)
+	tw.tween_callback(func(): get_tree().change_scene_to_file("res://scenes/title.tscn"))

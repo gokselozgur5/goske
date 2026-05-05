@@ -13,6 +13,7 @@ extends Node3D
 @export var base_color: Color = Color(0.7, 0.65, 0.6, 1.0)
 
 @onready var mesh: MeshInstance3D = $MeshInstance3D
+@onready var head_mesh: MeshInstance3D = $HeadMesh
 var intensity: float = 0.0
 var _material: StandardMaterial3D
 var player_in_range: bool = false
@@ -27,6 +28,8 @@ func _ready() -> void:
 	_material.roughness = 0.7
 	if mesh:
 		mesh.set_surface_override_material(0, _material)
+	if head_mesh:
+		head_mesh.set_surface_override_material(0, _material)
 	# Set up an Area3D child for proximity detection (created at runtime
 	# so the scene file stays simple — the Node3D root carries no body).
 	var area := Area3D.new()

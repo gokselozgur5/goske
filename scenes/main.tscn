@@ -128,8 +128,21 @@ rim_enabled = true
 rim = 0.4
 rim_tint = 0.3
 
+[sub_resource type="StandardMaterial3D" id="PodMatSealed"]
+albedo_color = Color(0.18, 0.2, 0.25, 1)
+metallic = 0.85
+metallic_specular = 0.65
+roughness = 0.35
+emission_enabled = true
+emission = Color(0.15, 0.28, 0.42, 1)
+emission_energy_multiplier = 0.45
+
 [sub_resource type="BoxMesh" id="PodBoxMesh"]
 material = SubResource("PodMat")
+size = Vector3(1.5, 0.25, 2.4)
+
+[sub_resource type="BoxMesh" id="PodSealedBoxMesh"]
+material = SubResource("PodMatSealed")
 size = Vector3(1.5, 0.25, 2.4)
 
 [sub_resource type="BoxMesh" id="PodLidMesh"]
@@ -384,7 +397,7 @@ draw_pass_1 = SubResource("SteamQuadMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, -2)
 
 [node name="Base" type="MeshInstance3D" parent="DecorPod1" unique_id=1336464644]
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodSealedBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod1" unique_id=1919275987]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
@@ -394,7 +407,7 @@ mesh = SubResource("PodLidMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -5)
 
 [node name="Base" type="MeshInstance3D" parent="DecorPod2" unique_id=1443288123]
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodSealedBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod2" unique_id=1790082871]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
@@ -404,7 +417,7 @@ mesh = SubResource("PodLidMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -6)
 
 [node name="Base" type="MeshInstance3D" parent="DecorPod3" unique_id=663143671]
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodSealedBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod3" unique_id=22794392]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
@@ -414,7 +427,7 @@ mesh = SubResource("PodLidMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -6)
 
 [node name="Base" type="MeshInstance3D" parent="DecorPod4" unique_id=1801934270]
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodSealedBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod4" unique_id=192853721]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
@@ -424,7 +437,7 @@ mesh = SubResource("PodLidMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -5)
 
 [node name="Base" type="MeshInstance3D" parent="DecorPod5" unique_id=11387276]
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodSealedBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod5" unique_id=947732558]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
@@ -434,7 +447,7 @@ mesh = SubResource("PodLidMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, -2)
 
 [node name="Base" type="MeshInstance3D" parent="DecorPod6" unique_id=111919813]
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodSealedBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod6" unique_id=752260410]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
@@ -444,7 +457,7 @@ mesh = SubResource("PodLidMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, 2)
 
 [node name="Base" type="MeshInstance3D" parent="DecorPod7" unique_id=439791490]
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodSealedBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod7" unique_id=1742596615]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
@@ -454,7 +467,7 @@ mesh = SubResource("PodLidMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, 5)
 
 [node name="Base" type="MeshInstance3D" parent="DecorPod8" unique_id=2003249131]
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodSealedBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod8" unique_id=1341707076]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
@@ -464,7 +477,7 @@ mesh = SubResource("PodLidMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 5)
 
 [node name="Base" type="MeshInstance3D" parent="DecorPod9" unique_id=1641507420]
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodSealedBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod9" unique_id=632538570]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
@@ -474,7 +487,7 @@ mesh = SubResource("PodLidMesh")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, 2)
 
 [node name="Base" type="MeshInstance3D" parent="DecorPod10" unique_id=1978082738]
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodSealedBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod10" unique_id=718747724]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
@@ -489,6 +502,10 @@ base_color = Color(0.72, 0.66, 0.58, 1)
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Neighbor1" unique_id=916080872]
 mesh = SubResource("CapsuleMesh_shared")
 
+[node name="HeadMesh" type="MeshInstance3D" parent="Neighbor1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+mesh = SubResource("HeadMesh_shared")
+
 [node name="Neighbor2" type="Node3D" parent="." unique_id=1703402110]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 1, 0)
 script = ExtResource("8_npc_script")
@@ -498,6 +515,10 @@ base_color = Color(0.6, 0.6, 0.64, 1)
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Neighbor2" unique_id=1223651821]
 mesh = SubResource("CapsuleMesh_shared")
 
+[node name="HeadMesh" type="MeshInstance3D" parent="Neighbor2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+mesh = SubResource("HeadMesh_shared")
+
 [node name="Neighbor3" type="Node3D" parent="." unique_id=828620592]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 9)
 script = ExtResource("8_npc_script")
@@ -506,6 +527,10 @@ base_color = Color(0.66, 0.56, 0.5, 1)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Neighbor3" unique_id=1631307827]
 mesh = SubResource("CapsuleMesh_shared")
+
+[node name="HeadMesh" type="MeshInstance3D" parent="Neighbor3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+mesh = SubResource("HeadMesh_shared")
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=1987622050]
 

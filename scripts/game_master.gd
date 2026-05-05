@@ -14,6 +14,10 @@ const ANTHROPIC_VERSION := "2023-06-01"
 const MODEL := "claude-haiku-4-5-20251001"
 const MAX_TOKENS := 3500
 
+# Web builds always go through the proxy. Hardcoded here so the URL ships
+# inside the wasm — secrets.cfg is gitignored and is not exported into pck.
+const WEB_PROXY_URL := "https://goske-proxy.goske.workers.dev"
+
 # api_url: defaults to Anthropic direct (local dev with api_key in secrets.cfg).
 # In demo / web builds, point this at a Cloudflare Worker proxy that holds the
 # real key as a server secret — see worker/ in repo root.
@@ -164,6 +168,14 @@ func _ready() -> void:
 	personas_node = get_node_or_null("/root/Main/AlterPersonas")
 
 func _load_api_key() -> void:
+	# Web build: secrets.cfg isn't shipped (gitignored, not in export filter).
+	# Hardcode proxy URL — the Worker holds the real key server-side, so
+	# nothing sensitive lands in the wasm.
+	if OS.has_feature("web"):
+		api_url = WEB_PROXY_URL
+		via_proxy = true
+		return
+
 	var cfg := ConfigFile.new()
 	var err := cfg.load("res://secrets.cfg")
 	if err != OK:

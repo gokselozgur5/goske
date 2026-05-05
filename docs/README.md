@@ -27,6 +27,7 @@ Living docs for the project. Read them when you stop trusting your own memory.
 - [ADR-015](ADR/ADR-015-visual-polish-round-2.md) — Visual polish round 2
 - [ADR-016](ADR/ADR-016-outburst-and-last-action-color.md) — Goske outburst + last-action color
 - [ADR-017](ADR/ADR-017-typewriter-session-and-auto-pacing.md) — Typewriter session token + auto-pacing
+- [ADR-018](ADR/ADR-018-runtime-ending-narration.md) — Runtime ending narration (GM writes the closing beat)
 
 ## When to write a new ADR
 

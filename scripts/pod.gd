@@ -48,6 +48,10 @@ func _input(event: InputEvent) -> void:
 
 func _open() -> void:
 	opened = true
+	# Steam puff at the moment the seal cracks
+	var particles := get_node_or_null("OpenParticles") as GPUParticles3D
+	if particles:
+		particles.restart()
 	# Lid slides up — cubic ease-out: fast then settles
 	var lid := get_node_or_null(lid_path) as Node3D
 	if lid:

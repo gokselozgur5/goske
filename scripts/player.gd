@@ -16,13 +16,18 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	var gs := get_tree().get_first_node_in_group("game_state")
-	# Stay still while a conversation is open
+	# Conversation open: only freeze if the input field has focus
+	# (otherwise the player can roam while alters speak through bubbles).
 	var convo := get_tree().get_first_node_in_group("conversation_ui")
+	var typing: bool = false
 	if convo and convo.is_open():
+		var input_line: LineEdit = convo.input_line
+		typing = input_line != null and input_line.has_focus()
+	if typing:
 		velocity = Vector3.ZERO
 		move_and_slide()
 		return
-	# Slow exhaustion recovery while idle
+	# Slow exhaustion recovery while idle (and not typing)
 	if gs:
 		gs.recover_exhaustion(delta)
 

@@ -621,6 +621,15 @@ text = "days alone · 0"
 theme_override_font_sizes/font_size = 22
 theme_override_colors/font_color = Color(0.7, 0.65, 0.6, 1)
 
+[node name="RollLabel" type="Label" parent="UI"]
+offset_left = 24.0
+offset_top = 96.0
+offset_right = 480.0
+offset_bottom = 130.0
+text = "last roll · —"
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.65, 0.65, 0.7, 1)
+
 [node name="ExhaustionLabel" type="Label" parent="UI" unique_id=537884291]
 anchors_preset = 1
 anchor_left = 1.0

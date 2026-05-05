@@ -17,6 +17,9 @@ var participants: Array[String] = []
 # history entry: {role, content, alter_id}
 var history: Array = []
 var greeted_alters: Array[String] = []
+# Bumped every time the panel opens/closes — in-flight typewriter
+# coroutines compare and abandon if they're stale.
+var _session_id: int = 0
 
 # Typewriter constants (inline, no separate script)
 const TW_SPEED_NORMAL := 0.030
@@ -43,6 +46,8 @@ func _connect_state_signals() -> void:
 			gs.day_passed.connect(_on_day_passed)
 		if not gs.mystery_phase_changed.is_connected(_on_mystery_phase_changed):
 			gs.mystery_phase_changed.connect(_on_mystery_phase_changed)
+		if not gs.action_recorded.is_connected(_on_action_recorded):
+			gs.action_recorded.connect(_on_action_recorded)
 	_refresh_all_trust_labels()
 	_refresh_exhaustion_label()
 	_refresh_mystery_label()
@@ -96,6 +101,34 @@ func _refresh_days_alone_label() -> void:
 	if gs == null:
 		return
 	label.text = "days alone · %d" % gs.days_alone
+
+func _on_action_recorded(label: String, color: Dictionary) -> void:
+	var roll_label: Label = get_node_or_null("/root/Main/UI/RollLabel")
+	if roll_label == null:
+		return
+	var r: int = int(color.get("r", 0))
+	var b: int = int(color.get("b", 0))
+	var g: int = int(color.get("g", 0))
+	# Compose colored BBCode-ish text — Label doesn't render BBCode, so we
+	# pick the dominant channel for tinting and write the numbers plainly.
+	roll_label.text = "%s · R%d  B%d  G%d" % [label, r, b, g]
+	# Tint by dominant channel
+	var dominant := "r"
+	if b > r and b >= g:
+		dominant = "b"
+	elif g > r and g >= b:
+		dominant = "g"
+	match dominant:
+		"r":
+			roll_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.55, 1))
+		"b":
+			roll_label.add_theme_color_override("font_color", Color(0.55, 0.7, 1.0, 1))
+		"g":
+			roll_label.add_theme_color_override("font_color", Color(0.55, 0.9, 0.6, 1))
+	# Brief flash — pulse alpha then settle
+	roll_label.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(roll_label, "modulate:a", 1.0, 0.2)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
@@ -280,10 +313,12 @@ func _apply_trust_delta(alter_id: String, delta: int) -> void:
 	gs.adjust_trust(alter_id, amplified)
 
 func close() -> void:
+	_session_id += 1  # invalidate any in-flight typewriter coroutines
 	hide()
 	participants.clear()
 
 func _open_ui() -> void:
+	_session_id += 1
 	history_label.clear()
 	for entry in history:
 		var aid: String = entry.get("alter_id", "")
@@ -340,6 +375,7 @@ func _world_state() -> Dictionary:
 		"tension": gs.tension,
 		"meta_eligible": gs.meta_eligible(),
 		"meta_breaches_remaining": 2 - gs.meta_breaches,
+		"last_action": gs.last_action,
 	}
 
 func _trigger_ending() -> void:
@@ -453,17 +489,30 @@ func _strip_markup(s: String) -> String:
 	out = rx.sub(out, "", true)
 	return out
 
-# Inline typewriter — char-by-char reveal with markup support.
+# Inline typewriter — char-by-char reveal with markup support + auto-pacing.
 func _typewriter_reveal(label: RichTextLabel, raw: String) -> void:
+	var my_session := _session_id
 	var segs := _typewriter_parse(raw)
 	var bold_open := false
 	for seg in segs:
+		# Abort if the panel was closed/reopened mid-reveal — stale.
+		if my_session != _session_id:
+			return
 		var t: String = str(seg.get("type", ""))
 		match t:
 			"char":
-				label.append_text(str(seg.get("char", "")))
+				var c: String = str(seg.get("char", ""))
+				label.append_text(c)
 				_scroll_history_to_bottom()
-				await get_tree().create_timer(float(seg.get("delay", TW_SPEED_NORMAL))).timeout
+				var d: float = float(seg.get("delay", TW_SPEED_NORMAL))
+				# Auto-pacing — punctuation breathes
+				if c == "." or c == "!" or c == "?":
+					d += 0.18
+				elif c == "," or c == ";" or c == ":":
+					d += 0.07
+				elif c == "—" or c == "…":
+					d += 0.12
+				await get_tree().create_timer(d).timeout
 			"pause":
 				await get_tree().create_timer(float(seg.get("duration", TW_PAUSE_DEFAULT))).timeout
 			"bold_toggle":
@@ -474,6 +523,8 @@ func _typewriter_reveal(label: RichTextLabel, raw: String) -> void:
 				bold_open = not bold_open
 			"bb_raw":
 				label.append_text(str(seg.get("text", "")))
+		if my_session != _session_id:
+			return
 	if bold_open:
 		label.append_text("[/b]")
 	_scroll_history_to_bottom()

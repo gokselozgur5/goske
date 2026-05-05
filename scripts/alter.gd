@@ -11,6 +11,9 @@ func _ready() -> void:
 func _on_body_entered(body: Node) -> void:
 	if body.name != "Player":
 		return
+	var gs := get_tree().get_first_node_in_group("game_state")
+	if gs and gs.has_method("record_action"):
+		gs.record_action("approached_" + alter_id)
 	var convo := get_tree().get_first_node_in_group("conversation_ui")
 	if convo == null or convo.is_open():
 		return

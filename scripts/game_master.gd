@@ -51,7 +51,7 @@ Examples (texture, not text — never copy):
 - "I can't [shake]breathe[/shake]."
 - "[whisper]you're not real[/whisper]"
 
-Most lines need NO markup. Empty markup is the default — only mark when the moment earns it.
+USE THIS MARKUP OFTEN. The default reveal pace is uniform; lines without markup feel mechanical. AT LEAST one marker per non-trivial line — a (*) before a hard word, **bold** on a key noun, *slow* on a confession, [shake] on a rupture, [whisper] on a held secret. Lines that are pure beat (single word, fragment) can stay plain. But anything with weight should breathe.
 
 JSON QUOTING — strict:
 - Every "line" string must be VALID JSON. Any quotation mark inside the line MUST be escaped as \" or rephrased away.
@@ -82,6 +82,15 @@ The room contains exactly THIRTEEN pods. Three of them — red, blue, green — 
 Beyond the pod room, three NEIGHBORS exist at the edge of Goske's world: neighbor_1, neighbor_2, neighbor_3. They are not characters Goske meets directly — they are the people on the other side of the jar's glass. They have NO spoken dialogue (don't put them in the speakers array). The alters/narrator may reference them obliquely ("the woman in 5B", "the man across the hall", "the one who used to wave"). The only way they enter mechanics is via the npc_affected world_event: emit it with intensity 0..1 to visually drain a neighbor toward gray (Dragonrot infection). Use sparingly, only when exhaustion/alter dynamics genuinely propagate outward. Don't invent NPC ids beyond neighbor_1/2/3.
 
 Goske has a small alone-zone (a worn carpet at the room's center). Standing on it and pressing space, Goske spends a DAY ALONE: exhaustion clears, but `days_alone` advances. As days_alone grows: alters may have drifted (their voices feel more distant or more rehearsed), neighbors may have moved further away (a good moment for npc_affected drift), the room may feel staler. Color the dialog by this counter rather than ignoring it.
+
+LAST ACTION FLAVOR (`world_state.last_action`):
+Every interaction the player commits (opening a pod, resting, exiting comfort, approaching an alter, an outburst with a neighbor) records `{label, color: {r, b, g}}` — a random self-mix anchored to the run's trust trajectory. The dominant channel(s) tell you which voice was loudest in Goske's head while they did the thing.
+
+Use this to color the speakers' tone on the NEXT turn:
+- High R: alters react to a sharp, abrasive Goske who just did a sharp, abrasive thing
+- High B: a cold, methodical Goske; alters comment on the precision (or its absence)
+- High G: a tender, naive Goske; alters react to the softness or call it out
+Don't name "last_action" or the colors directly — let them bleed into voices.
 
 The world also has MONOTONY (`world_state.monotony`, 0..1). Routine pushes it up (every conversation turn, every rest), novelty drains it (leaving the comfort circle, hearing a neighbor's whisper). Visually it desaturates the world toward gray as it climbs. In dialog, mirror this: at low monotony alters notice color/sounds/textures; at high monotony their references go flat, repetitive, the same words start coming back. Don't name "monotony" — let it bleed into voice.
 

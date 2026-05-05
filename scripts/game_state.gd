@@ -26,6 +26,10 @@ var monotony: float = 0.0
 var tension: float = 0.0
 var ending_shown: bool = false  # one-shot guard so the overlay only fires once per run
 var meta_breaches: int = 0  # how many times the GM has broken the 4th wall
+# Last action's flavor — every interaction (pod open, rest, alter approach,
+# outburst) rolls an RGB mix anchored to current trust + random nudge.
+# The GM reads this on the NEXT turn and colors voices accordingly.
+var last_action: Dictionary = {}
 
 const TRUST_DEFAULT := 50
 const EXHAUSTION_PER_RESPONSE := 5
@@ -45,6 +49,7 @@ signal alter_silenced(alter_id: String)
 signal npc_affected(npc_id: String, new_intensity: float)
 signal day_passed(new_days_alone: int)
 signal mystery_phase_changed(new_phase: String)
+signal action_recorded(label: String, color: Dictionary)
 signal monotony_changed(new_value: float)
 signal tension_changed(new_value: float)
 
@@ -59,6 +64,7 @@ func record_comfort_exit() -> void:
 	comfort_exits += 1
 	# Stepping outside the comfort circle is novelty — pushes monotony down.
 	adjust_monotony(MONOTONY_PER_COMFORT_EXIT)
+	record_action("comfort_exit")
 
 func record_alter_engagement(alter_id: String) -> void:
 	alter_engagements[alter_id] = alter_engagements.get(alter_id, 0) + 1
@@ -77,12 +83,28 @@ func unlock_alter(alter_id: String) -> void:
 		return
 	unlocked_alters.append(alter_id)
 	alter_unlocked.emit(alter_id)
+	record_action("opened_pod_" + alter_id)
 
 func is_unlocked(alter_id: String) -> bool:
 	return alter_id in unlocked_alters
 
 func is_silenced(alter_id: String) -> bool:
 	return alter_id in silenced_alters
+
+# Engine starts the action; LLM colors the outcome. Every interaction
+# records what was done + a random self-mix. The GM reads this on the
+# next turn and tints prose, alter reactions, narrator beats.
+func record_action(label: String) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var rr: int = clamp(get_trust("red") + rng.randi_range(-30, 30), 0, 100)
+	var bb: int = clamp(get_trust("blue") + rng.randi_range(-30, 30), 0, 100)
+	var gg: int = clamp(get_trust("green") + rng.randi_range(-30, 30), 0, 100)
+	last_action = {
+		"label": label,
+		"color": {"r": rr, "b": bb, "g": gg},
+	}
+	action_recorded.emit(label, last_action["color"])
 
 func compute_ending() -> Dictionary:
 	var endings_node := get_node_or_null("/root/Main/Endings")
@@ -131,6 +153,7 @@ func rest() -> void:
 	day_passed.emit(days_alone)
 	# Resting is itself routine — adds to monotony
 	adjust_monotony(MONOTONY_PER_REST)
+	record_action("rested")
 
 func set_tension(value: float) -> void:
 	var new_val: float = clamp(value, 0.0, 1.0)

@@ -25,6 +25,8 @@ Living docs for the project. Read them when you stop trusting your own memory.
 - [ADR-013](ADR/ADR-013-ux-pivot-suggestions-bubbles-typewriter.md) — UX pivot: speech bubbles, GM suggestions, typewriter
 - [ADR-014](ADR/ADR-014-drama-escalation-tension-monotony.md) — Drama escalation: tension + monotony
 - [ADR-015](ADR/ADR-015-visual-polish-round-2.md) — Visual polish round 2
+- [ADR-016](ADR/ADR-016-outburst-and-last-action-color.md) — Goske outburst + last-action color
+- [ADR-017](ADR/ADR-017-typewriter-session-and-auto-pacing.md) — Typewriter session token + auto-pacing
 
 ## When to write a new ADR
 

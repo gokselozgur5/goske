@@ -22,6 +22,9 @@ Living docs for the project. Read them when you stop trusting your own memory.
 - [ADR-010](ADR/ADR-010-english-everywhere.md) — English across all surfaces
 - [ADR-011](ADR/ADR-011-ending-production-triggers.md) — Ending production triggers
 - [ADR-012](ADR/ADR-012-fourth-wall-meta-breach.md) — 4th-wall meta breach (rare)
+- [ADR-013](ADR/ADR-013-ux-pivot-suggestions-bubbles-typewriter.md) — UX pivot: speech bubbles, GM suggestions, typewriter
+- [ADR-014](ADR/ADR-014-drama-escalation-tension-monotony.md) — Drama escalation: tension + monotony
+- [ADR-015](ADR/ADR-015-visual-polish-round-2.md) — Visual polish round 2
 
 ## When to write a new ADR
 

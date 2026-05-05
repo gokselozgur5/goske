@@ -8,3 +8,6 @@ secrets.cfg
 
 # Godotiq local bridge state (per-machine)
 .godotiq/
+
+# Web export output (rebuilt every deploy; see scripts/build_web.sh)
+web/

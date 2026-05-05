@@ -9,12 +9,17 @@ extends Node
 #     on_complete(turn: Dictionary, error: String)
 #     turn = {"speakers": [{id, line, trust_delta}], "world_events": [...]}
 
-const API_URL := "https://api.anthropic.com/v1/messages"
+const DEFAULT_API_URL := "https://api.anthropic.com/v1/messages"
 const ANTHROPIC_VERSION := "2023-06-01"
 const MODEL := "claude-haiku-4-5-20251001"
 const MAX_TOKENS := 3500
 
+# api_url: defaults to Anthropic direct (local dev with api_key in secrets.cfg).
+# In demo / web builds, point this at a Cloudflare Worker proxy that holds the
+# real key as a server secret — see worker/ in repo root.
+var api_url: String = DEFAULT_API_URL
 var api_key: String = ""
+var via_proxy: bool = false
 var personas_node: Node = null
 
 const SYSTEM_BASE := """You are the GAME MASTER of Goske, a narrative game. Like a tabletop DM: you play all characters, you run the world, you decide who speaks and when as a dramatic director.
@@ -165,12 +170,19 @@ func _load_api_key() -> void:
 		push_error("[GM] secrets.cfg failed to load: %s" % err)
 		return
 	api_key = cfg.get_value("anthropic", "api_key", "")
-	if api_key == "":
-		push_error("[GM] api_key empty")
+	var url_override: String = cfg.get_value("anthropic", "api_url", "")
+	if url_override != "":
+		api_url = url_override
+		via_proxy = true
+	# Validity:
+	# - direct mode: api_key required
+	# - proxy mode: api_key optional (Worker overrides x-api-key with its own secret)
+	if not via_proxy and api_key == "":
+		push_error("[GM] api_key empty (and no api_url proxy configured)")
 
 func request_turn(history: Array, world_state: Dictionary, on_complete: Callable) -> void:
-	if api_key == "":
-		on_complete.call({}, "no api key")
+	if not via_proxy and api_key == "":
+		on_complete.call({}, "no api key (and no proxy)")
 		return
 	if personas_node == null:
 		personas_node = get_node_or_null("/root/Main/AlterPersonas")
@@ -193,8 +205,11 @@ func request_turn(history: Array, world_state: Dictionary, on_complete: Callable
 		"messages": msgs,
 	}
 
+	# In proxy mode, Worker overrides x-api-key with its own secret. Send empty
+	# header to avoid leaking anything if a stale key happens to be in cfg.
+	var sent_key := "" if via_proxy else api_key
 	var headers := PackedStringArray([
-		"x-api-key: " + api_key,
+		"x-api-key: " + sent_key,
 		"anthropic-version: " + ANTHROPIC_VERSION,
 		"content-type: application/json",
 	])
@@ -203,7 +218,7 @@ func request_turn(history: Array, world_state: Dictionary, on_complete: Callable
 	add_child(http)
 	http.request_completed.connect(_on_response.bind(http, on_complete))
 
-	var err := http.request(API_URL, headers, HTTPClient.METHOD_POST, JSON.stringify(body))
+	var err := http.request(api_url, headers, HTTPClient.METHOD_POST, JSON.stringify(body))
 	if err != OK:
 		on_complete.call({}, "http request error: %s" % err)
 		http.queue_free()

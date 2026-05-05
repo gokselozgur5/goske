@@ -12,7 +12,7 @@ extends Node
 const API_URL := "https://api.anthropic.com/v1/messages"
 const ANTHROPIC_VERSION := "2023-06-01"
 const MODEL := "claude-haiku-4-5-20251001"
-const MAX_TOKENS := 2500
+const MAX_TOKENS := 3500
 
 var api_key: String = ""
 var personas_node: Node = null
@@ -27,11 +27,31 @@ RULES:
 - You decide which character(s) speak each turn. Not all of them must speak. One alter may stay silent, only the narrator may speak, etc. Pick what is meaningful.
 - Silenced characters NEVER speak.
 - trust_delta per speaker, integer in -5..+5 range.
-- world_events: exhaustion_delta (int), npc_affected (intensity 0..1), mystery_phase ("early"|"mid"|"late"), tension (level 0..1).
+- world_events: exhaustion_delta (int), npc_affected (intensity 0..1), mystery_phase ("early"|"mid"|"late"), tension (level 0..1), suggestions (array of {label, tone}).
 - Use the "narrator" character like the BG3 Narrator: scene atmosphere, Goske's inner state, environment, an alter's unspoken reaction. Often one short narrator line per turn, sometimes none, sometimes only the narrator (when atmosphere matters more than speech).
 - You decide who speaks. Skipping an alter is a valid dramatic choice — silence speaks. If a participant is conspicuously absent for a few turns and the player notices, the narrator may briefly account for it ("red has been quiet").
 - Narrator optional per turn.
 - Manifesto: density > volume — keep each line short (1-2 sentences), don't pad.
+
+TYPESET MARKUP — sparingly inside "line":
+You may use these inline markers to control how the line reveals on screen.
+Use them as drama beats, not decoration. One or two per line max.
+- (*)              : 0.4s pause
+- (*1.2)           : custom-duration pause (any positive number)
+- **X**            : bold emphasis on X
+- *slow* X *!*     : slow segment (slower per-char delay)
+- *fast* X *!*     : fast segment
+- [shake]X[/shake] : trembling X (rupture, vertigo)
+- [whisper]X[/whisper] : quiet/dim X (hushed beat)
+
+Examples (texture, not text — never copy):
+- "Where (*) where am I?"
+- "**Cut the act, red.**"
+- "*slow* The mist settles. *!*"
+- "I can't [shake]breathe[/shake]."
+- "[whisper]you're not real[/whisper]"
+
+Most lines need NO markup. Empty markup is the default — only mark when the moment earns it.
 
 JSON QUOTING — strict:
 - Every "line" string must be VALID JSON. Any quotation mark inside the line MUST be escaped as \" or rephrased away.
@@ -73,6 +93,21 @@ TENSION (`world_state.tension`, 0..1) is the conversation's drama escalation. Yo
 When tension is high (≥0.6), pace differently: shorter alter lines, more narrator beats, sometimes only the narrator while the alters hold their ground. At ≥0.85 — rupture: drastic trust shifts feel earned, an alter may lash, withhold, or break character.
 
 If a turn doesn't escalate, you don't have to emit anything — tension will decay on its own. Don't ride it artificially. Don't NAME tension in dialog; just let the prose tighten.
+
+PLAYER REPLY SUGGESTIONS — MANDATORY every turn, EXACTLY 13 entries:
+This is NON-OPTIONAL. Every single response you produce MUST include in `world_events` an entry of the form `{"type": "suggestions", "items": [13 objects]}`. If you skip this the UI is broken. Do not omit. Do not return fewer.
+
+After your speakers respond, predict 13 things kanka might want to say next, written in kanka's voice. Each is a SHORT reply (~5-15 words), tagged by tone — push, withhold, agree, deflect, soft, sharp, ask, concede, joke, threat, vulnerable, repeat, silent.
+
+The number 13 is canonical (matches the pod count) — it's not a UX limit, it's the texture of multiplicity in Goske's head. Make each one a DISTINCT path with a DISTINCT consequence. No filler, no near-duplicates.
+
+Format: world_events: [{type: "suggestions", items: [{label: "Cut the act, red.", tone: "sharp"}, {label: "I don't remember, but I want to.", tone: "soft"}, ...]}]
+
+These are NOT a closed dialogue tree. kanka can ignore them and free-text via F. Each suggestion should:
+- Sound like something kanka WOULD say, not a generic RPG option
+- Open a different consequence (tone matters — sharp pushes, soft opens, ask probes, etc.)
+- Be conversational, short — embodied speech, not exposition
+- 13 distinct directions, even when the moment feels narrow. If you find yourself padding, you're not seeing the full possibility space.
 
 4TH-WALL META BREACH (rare, earned):
 If world_state.meta_eligible is true AND the moment genuinely warrants it,

@@ -116,9 +116,9 @@ func check_ending_trigger() -> String:
 	# 4. Trust extremes — a committed run.
 	for aid in unlocked_alters:
 		var t: int = get_trust(aid)
-		if t >= 92:
+		if t >= 85:
 			return "trust_high_" + aid
-		if t <= 8:
+		if t <= 15:
 			return "trust_low_" + aid
 	return ""
 

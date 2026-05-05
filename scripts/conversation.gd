@@ -6,15 +6,23 @@ extends Control
 const FALLBACK_GREETING := "..."
 
 @onready var history_label: RichTextLabel = $Panel/Margin/VBox/HistoryScroll/History
+@onready var history_scroll: ScrollContainer = $Panel/Margin/VBox/HistoryScroll
 @onready var input_line: LineEdit = $Panel/Margin/VBox/InputLine
 @onready var trust_red: Label = $Panel/Margin/VBox/TrustBar/TrustRed
 @onready var trust_blue: Label = $Panel/Margin/VBox/TrustBar/TrustBlue
 @onready var trust_green: Label = $Panel/Margin/VBox/TrustBar/TrustGreen
+@onready var suggestion_strip: VBoxContainer = $Panel/Margin/VBox/SuggestionScroll/SuggestionStrip
 
 var participants: Array[String] = []
 # history entry: {role, content, alter_id}
 var history: Array = []
 var greeted_alters: Array[String] = []
+
+# Typewriter constants (inline, no separate script)
+const TW_SPEED_NORMAL := 0.030
+const TW_SPEED_SLOW := 0.060
+const TW_SPEED_FAST := 0.015
+const TW_PAUSE_DEFAULT := 0.40
 
 func _ready() -> void:
 	add_to_group("conversation_ui")
@@ -90,9 +98,26 @@ func _refresh_days_alone_label() -> void:
 	label.text = "days alone · %d" % gs.days_alone
 
 func _unhandled_input(event: InputEvent) -> void:
-	if visible and event.is_action_pressed("ui_cancel"):
+	if not visible:
+		return
+	if event.is_action_pressed("ui_cancel"):
 		close()
 		get_viewport().set_input_as_handled()
+		return
+	# F toggles free-text input mode
+	if event is InputEventKey and event.pressed and event.keycode == KEY_F:
+		_toggle_free_text()
+		get_viewport().set_input_as_handled()
+
+func _toggle_free_text() -> void:
+	if input_line == null:
+		return
+	if input_line.visible:
+		input_line.release_focus()
+		input_line.visible = false
+	else:
+		input_line.visible = true
+		input_line.grab_focus()
 
 func is_open() -> bool:
 	return visible
@@ -163,13 +188,13 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 			if gs_for_filter.is_silenced(sid):
 				print("[GM] dropped silenced speaker: ", sid)
 				continue
-		_append_alter_line(sid, line)
+		await _append_alter_line(sid, line)
 		if trust_delta != 0:
 			_apply_trust_delta(sid, trust_delta)
 	# Narration (optional) — append as narrator speaker so it persists
 	var narration: String = str(turn.get("narration", "")).strip_edges()
 	if narration != "":
-		_append_alter_line("narrator", narration)
+		await _append_alter_line("narrator", narration)
 	# World events
 	var events: Array = turn.get("world_events", [])
 	var gs := get_tree().get_first_node_in_group("game_state")
@@ -184,6 +209,11 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 	# Tension decay — if GM didn't emit a tension event this turn, drain a bit.
 	if gs and not _events_have_tension(events):
 		gs.decay_tension()
+	# Debug: log all world_event types received this turn
+	var event_types: Array = []
+	for ev in events:
+		event_types.append(str(ev.get("type", "?")))
+	print("[GM] world_events: %s" % str(event_types))
 	# Check if a production ending trigger has been met
 	if gs:
 		var reason: String = gs.check_ending_trigger()
@@ -228,6 +258,14 @@ func _apply_world_event(ev: Dictionary, gs) -> void:
 		"tension":
 			var lvl: float = float(ev.get("level", 0.0))
 			gs.set_tension(lvl)
+		"suggestions":
+			var items: Array = ev.get("items", [])
+			print("[GM] suggestions received: %d items" % items.size())
+			_rebuild_suggestions(items)
+		"monotony_delta":
+			var amt: float = float(ev.get("amount", 0.0))
+			if amt != 0.0:
+				gs.adjust_monotony(amt)
 		_:
 			print("[GM] unknown world_event: ", ev)
 
@@ -380,21 +418,132 @@ func _append_user_line(t: String) -> void:
 	history_label.append_text("[color=#dddddd][b]you:[/b] %s[/color]\n" % t)
 
 func _append_alter_line(alter_id: String, t: String) -> void:
+	# Strip markup for stored history (so re-opens don't re-render commands).
+	var clean_t := _strip_markup(t)
 	if alter_id == "narrator":
-		var nar_content := "[narrator]: %s" % t
+		var nar_content := "[narrator]: %s" % clean_t
 		history.append({"role": "user", "content": nar_content, "alter_id": alter_id})
-		history_label.append_text("[color=#d4c5a0][i]%s[/i][/color]\n" % t)
+		history_label.append_text("[color=#d4c5a0][i]")
+		await _typewriter_reveal(history_label, t)
+		history_label.append_text("[/i][/color]\n")
 		return
 	if alter_id == "meta":
-		# 4th-wall breach — render distinctly: amber, bold-italic, ringed
-		var meta_content := "[META]: %s" % t
+		var meta_content := "[META]: %s" % clean_t
 		history.append({"role": "user", "content": meta_content, "alter_id": alter_id})
-		history_label.append_text("\n[color=#ffcc88][b][i]%s[/i][/b][/color]\n\n" % t)
+		history_label.append_text("\n[color=#ffcc88][b][i]")
+		await _typewriter_reveal(history_label, t)
+		history_label.append_text("[/i][/b][/color]\n\n")
 		return
-	var content := "[%s alter]: %s" % [alter_id, t]
+	var content := "[%s alter]: %s" % [alter_id, clean_t]
 	history.append({"role": "user", "content": content, "alter_id": alter_id})
 	var color := _color_for_alter(alter_id)
-	history_label.append_text("[color=%s][b]%s:[/b] %s[/color]\n" % [color, alter_id, t])
+	history_label.append_text("[color=%s][b]%s:[/b] " % [color, alter_id])
+	await _typewriter_reveal(history_label, t)
+	history_label.append_text("[/color]\n")
+	# Floating speech bubble — instant for now (clean text without markup)
+	for a in get_tree().get_nodes_in_group("alters"):
+		if a.alter_id == alter_id and a.has_method("show_bubble"):
+			a.show_bubble(clean_t)
+			break
+
+func _strip_markup(s: String) -> String:
+	var out := s
+	var rx := RegEx.new()
+	rx.compile("\\(\\*[0-9.]*\\)|\\*\\*|\\*slow\\*|\\*fast\\*|\\*!\\*|\\[shake\\]|\\[/shake\\]|\\[whisper\\]|\\[/whisper\\]")
+	out = rx.sub(out, "", true)
+	return out
+
+# Inline typewriter — char-by-char reveal with markup support.
+func _typewriter_reveal(label: RichTextLabel, raw: String) -> void:
+	var segs := _typewriter_parse(raw)
+	var bold_open := false
+	for seg in segs:
+		var t: String = str(seg.get("type", ""))
+		match t:
+			"char":
+				label.append_text(str(seg.get("char", "")))
+				_scroll_history_to_bottom()
+				await get_tree().create_timer(float(seg.get("delay", TW_SPEED_NORMAL))).timeout
+			"pause":
+				await get_tree().create_timer(float(seg.get("duration", TW_PAUSE_DEFAULT))).timeout
+			"bold_toggle":
+				if bold_open:
+					label.append_text("[/b]")
+				else:
+					label.append_text("[b]")
+				bold_open = not bold_open
+			"bb_raw":
+				label.append_text(str(seg.get("text", "")))
+	if bold_open:
+		label.append_text("[/b]")
+	_scroll_history_to_bottom()
+
+func _scroll_history_to_bottom() -> void:
+	if history_scroll == null:
+		return
+	var sb := history_scroll.get_v_scroll_bar()
+	if sb:
+		history_scroll.scroll_vertical = int(sb.max_value)
+
+func _typewriter_parse(raw: String) -> Array:
+	var out: Array = []
+	var i := 0
+	var n := raw.length()
+	var speed := TW_SPEED_NORMAL
+	while i < n:
+		# Pause: (*) or (*N)
+		if i + 1 < n and raw.substr(i, 2) == "(*":
+			var close_idx := raw.find(")", i)
+			if close_idx != -1:
+				var inside := raw.substr(i + 2, close_idx - i - 2)
+				var dur := TW_PAUSE_DEFAULT
+				if inside.length() > 0:
+					var parsed_dur := inside.to_float()
+					if parsed_dur > 0.0:
+						dur = parsed_dur
+				out.append({"type": "pause", "duration": dur})
+				i = close_idx + 1
+				continue
+		# Bold toggle **
+		if i + 1 < n and raw.substr(i, 2) == "**":
+			out.append({"type": "bold_toggle"})
+			i += 2
+			continue
+		# Slow / fast / reset
+		if raw.substr(i, 6) == "*slow*":
+			speed = TW_SPEED_SLOW
+			i += 6
+			continue
+		if raw.substr(i, 6) == "*fast*":
+			speed = TW_SPEED_FAST
+			i += 6
+			continue
+		if raw.substr(i, 3) == "*!*":
+			speed = TW_SPEED_NORMAL
+			i += 3
+			continue
+		# Shake → built-in BBCode tremor
+		if raw.substr(i, 7) == "[shake]":
+			out.append({"type": "bb_raw", "text": "[shake rate=20 level=5]"})
+			i += 7
+			continue
+		if raw.substr(i, 8) == "[/shake]":
+			out.append({"type": "bb_raw", "text": "[/shake]"})
+			i += 8
+			continue
+		# Whisper → dim italic
+		if raw.substr(i, 9) == "[whisper]":
+			out.append({"type": "bb_raw", "text": "[color=#888888][i]"})
+			i += 9
+			continue
+		if raw.substr(i, 10) == "[/whisper]":
+			out.append({"type": "bb_raw", "text": "[/i][/color]"})
+			i += 10
+			continue
+		# Default: single char
+		out.append({"type": "char", "char": raw.substr(i, 1), "delay": speed})
+		i += 1
+	return out
 
 func _color_for_alter(id: String) -> String:
 	match id:
@@ -402,3 +551,49 @@ func _color_for_alter(id: String) -> String:
 		"blue": return "#6699ff"
 		"green": return "#66cc77"
 		_: return "#cccccc"
+
+func _rebuild_suggestions(items: Array) -> void:
+	if suggestion_strip == null:
+		return
+	for child in suggestion_strip.get_children():
+		child.queue_free()
+	for item in items:
+		var label: String = str(item.get("label", "")).strip_edges()
+		if label == "":
+			continue
+		var tone: String = str(item.get("tone", ""))
+		var btn := Button.new()
+		btn.text = "› " + label
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.add_theme_font_size_override("font_size", 22)
+		btn.add_theme_color_override("font_color", _color_for_tone(tone))
+		btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+		btn.pressed.connect(_on_suggestion_pressed.bind(label))
+		suggestion_strip.add_child(btn)
+
+func _color_for_tone(tone: String) -> Color:
+	match tone:
+		"sharp", "push":
+			return Color(1.0, 0.62, 0.55)
+		"soft", "concede":
+			return Color(0.62, 0.85, 0.7)
+		"ask":
+			return Color(0.7, 0.78, 0.95)
+		"deflect", "withhold":
+			return Color(0.78, 0.72, 0.55)
+		"agree":
+			return Color(0.78, 0.85, 0.62)
+		_:
+			return Color(0.85, 0.82, 0.78)
+
+func _on_suggestion_pressed(label: String) -> void:
+	# Same flow as typing it: append, send to GM, clear strip
+	if participants.is_empty():
+		return
+	_append_user_line(label)
+	for child in suggestion_strip.get_children():
+		child.queue_free()
+	var gm := get_node_or_null("/root/Main/GameMaster")
+	if gm == null:
+		return
+	gm.request_turn(history, _world_state(), _on_gm_turn)

@@ -13,6 +13,7 @@
 [ext_resource type="Script" path="res://scripts/world_environment_manager.gd" id="11_env_script"]
 [ext_resource type="Script" path="res://scripts/endings.gd" id="12_endings_script"]
 [ext_resource type="Script" path="res://scripts/ending_overlay.gd" id="13_ending_overlay_script"]
+[ext_resource type="Shader" path="res://scripts/grass.gdshader" id="14_grass_shader"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat_1"]
 sky_horizon_color = Color(0.55, 0.65, 0.7, 1)
@@ -40,9 +41,16 @@ fog_density = 0.012
 fog_light_color = Color(0.55, 0.6, 0.65, 1)
 fog_aerial_perspective = 0.3
 
-[sub_resource type="StandardMaterial3D" id="GrassMat_1"]
-albedo_color = Color(0.35, 0.5, 0.25, 1)
-roughness = 0.95
+[sub_resource type="ShaderMaterial" id="GrassMat_1"]
+shader = ExtResource("14_grass_shader")
+shader_parameter/grass_dark = Color(0.18, 0.28, 0.12, 1)
+shader_parameter/grass_mid = Color(0.32, 0.46, 0.22, 1)
+shader_parameter/grass_highlight = Color(0.48, 0.62, 0.30, 1)
+shader_parameter/dirt_color = Color(0.32, 0.24, 0.16, 1)
+shader_parameter/roughness_value = 0.92
+shader_parameter/noise_scale = 14.0
+shader_parameter/dirt_threshold = 0.08
+shader_parameter/patch_scale = 3.5
 
 [sub_resource type="BoxMesh" id="BoxMesh_floor"]
 material = SubResource("GrassMat_1")
@@ -102,13 +110,49 @@ albedo_color = Color(0.25, 0.6, 0.32, 1)
 roughness = 0.55
 
 [sub_resource type="StandardMaterial3D" id="PodMat"]
-albedo_color = Color(0.35, 0.35, 0.42, 1)
-metallic = 0.2
-roughness = 0.6
+albedo_color = Color(0.22, 0.23, 0.27, 1)
+metallic = 0.78
+metallic_specular = 0.6
+roughness = 0.42
+
+[sub_resource type="StandardMaterial3D" id="PodLidMat"]
+albedo_color = Color(0.42, 0.45, 0.5, 1)
+metallic = 0.65
+metallic_specular = 0.7
+roughness = 0.32
+rim_enabled = true
+rim = 0.4
+rim_tint = 0.3
 
 [sub_resource type="BoxMesh" id="PodBoxMesh"]
 material = SubResource("PodMat")
 size = Vector3(1.5, 0.25, 2.4)
+
+[sub_resource type="BoxMesh" id="PodLidMesh"]
+material = SubResource("PodLidMat")
+size = Vector3(1.5, 0.25, 2.4)
+
+[sub_resource type="ParticleProcessMaterial" id="SteamProcessMat"]
+direction = Vector3(0, 1, 0)
+spread = 35.0
+gravity = Vector3(0, 0.4, 0)
+initial_velocity_min = 0.9
+initial_velocity_max = 1.6
+scale_min = 0.25
+scale_max = 0.55
+color = Color(0.92, 0.93, 0.95, 0.55)
+hue_variation_min = -0.05
+hue_variation_max = 0.05
+
+[sub_resource type="StandardMaterial3D" id="SteamQuadMat"]
+albedo_color = Color(0.95, 0.96, 0.98, 0.85)
+transparency = 1
+shading_mode = 0
+billboard_mode = 1
+
+[sub_resource type="QuadMesh" id="SteamQuadMesh"]
+material = SubResource("SteamQuadMat")
+size = Vector2(0.6, 0.6)
 
 [sub_resource type="BoxShape3D" id="PodTriggerShape"]
 size = Vector3(3.5, 2.5, 3.5)
@@ -173,6 +217,13 @@ surface_material_override/0 = SubResource("GoskeMat")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=1454708915]
 shape = SubResource("CapsuleShape3D_player")
 
+[node name="GoskeLight" type="OmniLight3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+light_color = Color(0.95, 0.85, 0.7, 1)
+light_energy = 0.55
+omni_range = 4.5
+omni_attenuation = 1.5
+
 [node name="Camera3D" type="Camera3D" parent="Player" unique_id=1954337784]
 transform = Transform3D(0.707107, -0.408248, 0.57735, 0, 0.816497, 0.57735, -0.707107, -0.408248, 0.57735, 10, 10, 10)
 projection = 1
@@ -233,11 +284,21 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="PodRed" unique_id=523901766]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="PodRed" unique_id=535230727]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("PodTriggerShape")
+
+[node name="OpenParticles" type="GPUParticles3D" parent="PodRed"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+emitting = false
+amount = 30
+lifetime = 1.4
+one_shot = true
+explosiveness = 0.7
+process_material = SubResource("SteamProcessMat")
+draw_pass_1 = SubResource("SteamQuadMesh")
 
 [node name="PodBlue" type="Area3D" parent="." unique_id=422837422]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, -2)
@@ -251,11 +312,21 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="PodBlue" unique_id=2015037872]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="PodBlue" unique_id=1451998992]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("PodTriggerShape")
+
+[node name="OpenParticles" type="GPUParticles3D" parent="PodBlue"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+emitting = false
+amount = 30
+lifetime = 1.4
+one_shot = true
+explosiveness = 0.7
+process_material = SubResource("SteamProcessMat")
+draw_pass_1 = SubResource("SteamQuadMesh")
 
 [node name="PodGreen" type="Area3D" parent="." unique_id=1590677636]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3)
@@ -269,11 +340,21 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="PodGreen" unique_id=2012094272]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="PodGreen" unique_id=124123531]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("PodTriggerShape")
+
+[node name="OpenParticles" type="GPUParticles3D" parent="PodGreen"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+emitting = false
+amount = 30
+lifetime = 1.4
+one_shot = true
+explosiveness = 0.7
+process_material = SubResource("SteamProcessMat")
+draw_pass_1 = SubResource("SteamQuadMesh")
 
 [node name="DecorPod1" type="Node3D" parent="." unique_id=957114702]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, -2)
@@ -283,7 +364,7 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod1" unique_id=1919275987]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="DecorPod2" type="Node3D" parent="." unique_id=1106021172]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -5)
@@ -293,7 +374,7 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod2" unique_id=1790082871]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="DecorPod3" type="Node3D" parent="." unique_id=288620853]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -6)
@@ -303,7 +384,7 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod3" unique_id=22794392]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="DecorPod4" type="Node3D" parent="." unique_id=771801715]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -6)
@@ -313,7 +394,7 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod4" unique_id=192853721]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="DecorPod5" type="Node3D" parent="." unique_id=1972798100]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -5)
@@ -323,7 +404,7 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod5" unique_id=947732558]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="DecorPod6" type="Node3D" parent="." unique_id=1525864630]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, -2)
@@ -333,7 +414,7 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod6" unique_id=752260410]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="DecorPod7" type="Node3D" parent="." unique_id=10616570]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, 2)
@@ -343,7 +424,7 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod7" unique_id=1742596615]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="DecorPod8" type="Node3D" parent="." unique_id=2129730976]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, 5)
@@ -353,7 +434,7 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod8" unique_id=1341707076]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="DecorPod9" type="Node3D" parent="." unique_id=2122482328]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 5)
@@ -363,7 +444,7 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod9" unique_id=632538570]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="DecorPod10" type="Node3D" parent="." unique_id=66366976]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, 2)
@@ -373,7 +454,7 @@ mesh = SubResource("PodBoxMesh")
 
 [node name="Lid" type="MeshInstance3D" parent="DecorPod10" unique_id=718747724]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
-mesh = SubResource("PodBoxMesh")
+mesh = SubResource("PodLidMesh")
 
 [node name="Neighbor1" type="Node3D" parent="." unique_id=1827169467]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 1, 0)
@@ -517,7 +598,7 @@ script = ExtResource("3_conversation_script")
 
 [node name="Panel" type="PanelContainer" parent="UI/ConversationPanel" unique_id=2058462770]
 layout_mode = 0
-anchor_top = 0.5
+anchor_top = 0.32
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 80.0
@@ -536,7 +617,7 @@ layout_mode = 2
 theme_override_constants/separation = 14
 
 [node name="HistoryScroll" type="ScrollContainer" parent="UI/ConversationPanel/Panel/Margin/VBox" unique_id=1081291151]
-custom_minimum_size = Vector2(0, 260)
+custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -577,8 +658,26 @@ theme_override_colors/font_color = Color(0.4, 0.8, 0.5, 1)
 theme_override_font_sizes/font_size = 22
 text = "green 50"
 
+[node name="SuggestionScroll" type="ScrollContainer" parent="UI/ConversationPanel/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 280)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SuggestionStrip" type="VBoxContainer" parent="UI/ConversationPanel/Panel/Margin/VBox/SuggestionScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="HintLabel" type="Label" parent="UI/ConversationPanel/Panel/Margin/VBox"]
+layout_mode = 2
+text = "F  type freely    ·    ESC  close"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.55, 0.55, 0.6, 1)
+
 [node name="InputLine" type="LineEdit" parent="UI/ConversationPanel/Panel/Margin/VBox" unique_id=75412356]
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 placeholder_text = "Type, press Enter to send..."
+visible = false

@@ -32,6 +32,20 @@ func _ready() -> void:
 	hide()
 	input_line.text_submitted.connect(_on_user_submit)
 	call_deferred("_connect_state_signals")
+	call_deferred("_ensure_narrator_voice")
+
+func _ensure_narrator_voice() -> void:
+	# Spawn the NarratorVoice node under /root/Main if it isn't already there.
+	# Done at runtime so we don't have to edit main.tscn (and risk breaking it).
+	var main := get_node_or_null("/root/Main")
+	if main == null:
+		return
+	if main.get_node_or_null("NarratorVoice") != null:
+		return
+	var nv_script := preload("res://scripts/narrator_voice.gd")
+	var nv: Node = nv_script.new()
+	nv.name = "NarratorVoice"
+	main.add_child(nv)
 
 func _connect_state_signals() -> void:
 	var gs := get_tree().get_first_node_in_group("game_state")
@@ -462,6 +476,11 @@ func _append_alter_line(alter_id: String, t: String) -> void:
 		history_label.append_text("[color=#d4c5a0][i]")
 		await _typewriter_reveal(history_label, t)
 		history_label.append_text("[/i][/color]\n")
+		# Typewriter done — fire the TTS so the voice arrives just as the
+		# eye finishes reading. Manifesto: only the narrator is voiced.
+		var nv := get_node_or_null("/root/Main/NarratorVoice")
+		if nv != null and nv.has_method("speak"):
+			nv.speak(clean_t)
 		return
 	if alter_id == "meta":
 		var meta_content := "[META]: %s" % clean_t

@@ -328,6 +328,10 @@ func _apply_trust_delta(alter_id: String, delta: int) -> void:
 
 func close() -> void:
 	_session_id += 1  # invalidate any in-flight typewriter coroutines
+	# Stop the narrator mid-line if the player walks away from the pod.
+	var nv := get_node_or_null("/root/Main/NarratorVoice")
+	if nv != null and nv.has_method("stop_audio"):
+		nv.stop_audio()
 	hide()
 	participants.clear()
 
@@ -473,14 +477,21 @@ func _append_alter_line(alter_id: String, t: String) -> void:
 	if alter_id == "narrator":
 		var nar_content := "[narrator]: %s" % clean_t
 		history.append({"role": "user", "content": nar_content, "alter_id": alter_id})
+
+		# Pre-fetch TTS audio. Wait for it to load, THEN start playback +
+		# typewriter on the same frame so voice and text run in parallel
+		# (sinema-altyazı tarzı). The 2-4s download feels like a narrator
+		# beat, not a freeze.
+		var nv := get_node_or_null("/root/Main/NarratorVoice")
+		var has_audio: bool = false
+		if nv != null and nv.has_method("prepare"):
+			has_audio = await nv.prepare(clean_t)
+
 		history_label.append_text("[color=#d4c5a0][i]")
+		if has_audio and nv.has_method("play_now"):
+			nv.play_now()
 		await _typewriter_reveal(history_label, t)
 		history_label.append_text("[/i][/color]\n")
-		# Typewriter done — fire the TTS so the voice arrives just as the
-		# eye finishes reading. Manifesto: only the narrator is voiced.
-		var nv := get_node_or_null("/root/Main/NarratorVoice")
-		if nv != null and nv.has_method("speak"):
-			nv.speak(clean_t)
 		return
 	if alter_id == "meta":
 		var meta_content := "[META]: %s" % clean_t

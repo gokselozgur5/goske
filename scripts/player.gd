@@ -12,8 +12,73 @@ const COMFORT_RADIUS := 5.0
 var in_comfort: bool = true
 var _was_exhausted_black: bool = false
 
+# Isometric camera — a sibling Camera3D in the scene root with a fixed
+# rotation. We move it every frame to keep the player centered, but
+# we NEVER touch its basis: the angle stays constant so screen-space
+# input keys map to a stable world direction.
+var _camera: Camera3D = null
+const CAMERA_OFFSET := Vector3(6.0, 6.0, 6.0)
+const CAMERA_TARGET_OFFSET := Vector3(0, 1.0, 0)
+
+# Optional rigged body — UAL1 mannequin with AnimationPlayer. Resolved on
+# _ready; if absent (legacy main.tscn), animation state is skipped.
+var _anim: AnimationPlayer = null
+var _current_anim: String = ""
+# Godot strips the "_Loop" suffix from glb animations on import and sets
+# loop_mode=LINEAR; the real names are "Idle" / "Walk".
+const ANIM_IDLE := "Idle"
+const ANIM_WALK := "Walk"
+
 func _ready() -> void:
 	_apply_material()
+	_resolve_animation_player()
+	_play_anim(ANIM_IDLE)
+	_resolve_camera()
+
+func _resolve_camera() -> void:
+	# Look at scene-root siblings for a Camera3D first; fall back to any
+	# Camera3D in the tree.
+	var parent := get_parent()
+	if parent != null:
+		for child in parent.get_children():
+			if child is Camera3D:
+				_camera = child
+				return
+	_camera = get_viewport().get_camera_3d()
+
+func _resolve_animation_player() -> void:
+	# Recursive search — UAL1's AnimationPlayer sits a few levels deep
+	# under Body/Armature in the imported glb tree.
+	var body := get_node_or_null("Body")
+	if body == null:
+		return
+	_anim = _find_anim_recursive(body)
+
+func _find_anim_recursive(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node
+	for c in node.get_children():
+		var found := _find_anim_recursive(c)
+		if found != null:
+			return found
+	return null
+
+func _play_anim(name: String) -> void:
+	if _anim == null:
+		return
+	if _current_anim == name:
+		return
+	if not _anim.has_animation(name):
+		return
+	_anim.play(name)
+	_current_anim = name
+
+func _update_camera() -> void:
+	# Position-follow only. The camera's rotation is set once in the scene
+	# (isometric basis); we never look_at, so the angle stays put.
+	if _camera == null:
+		return
+	_camera.global_position = global_position + CAMERA_OFFSET
 
 func _physics_process(delta: float) -> void:
 	var gs := get_tree().get_first_node_in_group("game_state")
@@ -34,7 +99,8 @@ func _physics_process(delta: float) -> void:
 
 	var input_dir := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	var direction := Vector3(input_dir.x, 0, input_dir.y)
-	# Match isometric camera 45deg yaw
+	# Iso camera is at (6,6,6) → world axes are 45° off screen axes.
+	# Rotate input so W maps to "screen up" = world -X-Z direction.
 	direction = direction.rotated(Vector3.UP, deg_to_rad(45))
 	direction = direction.normalized()
 
@@ -47,6 +113,22 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 0.0
 
 	move_and_slide()
+
+	# Animation state — walk while moving, idle while still
+	var moving := Vector2(velocity.x, velocity.z).length_squared() > 0.04
+	_play_anim(ANIM_WALK if moving else ANIM_IDLE)
+
+	# Face the direction of movement. UAL1 mannequin's local forward is
+	# +Z (its mesh "looks" toward +Z by default), so atan2(vx, vz) makes
+	# the model face the velocity vector.
+	if moving:
+		var yaw := atan2(velocity.x, velocity.z)
+		rotation.y = yaw
+
+	# Third-person camera: place behind the player (in player local +Z)
+	# and look at the torso. The camera rotates with the player because
+	# we transform the offset through the player's basis.
+	_update_camera()
 
 	var dist := Vector2(position.x, position.z).length()
 	var was_in_comfort := in_comfort

@@ -11,3 +11,4 @@ secrets.cfg
 
 # Web export output (rebuilt every deploy; see scripts/build_web.sh)
 web/
+*.bak

@@ -200,9 +200,9 @@ async function handleTTS(request, env, ctx) {
         text,
         model_id: ELEVENLABS_MODEL,
         voice_settings: {
-          stability: 0.45,         // a bit dramatic, not flat
-          similarity_boost: 0.75,
-          style: 0.55,             // expressive narration
+          stability:        typeof body.stability        === "number" ? Math.min(1, Math.max(0, body.stability))        : 0.45,
+          similarity_boost: typeof body.similarity_boost === "number" ? Math.min(1, Math.max(0, body.similarity_boost)) : 0.75,
+          style:            typeof body.style            === "number" ? Math.min(1, Math.max(0, body.style))            : 0.55,
           use_speaker_boost: true,
         },
       }),

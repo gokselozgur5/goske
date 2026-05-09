@@ -15,10 +15,12 @@ No install. Click "Run game" on the page. Bring headphones if you have them.
 | Action | Key |
 |---|---|
 | Move | **W A S D** (or arrow keys) |
-| Talk to a pod / neighbor | walk into them — conversation opens automatically |
+| Dash | **Space** |
+| Open a pod / interact | **E** when in range |
 | Pick a reply | click one of the suggestions |
 | Type freely | **F** (toggles your own input) |
 | Send your line | **Enter** |
+| Skip narrator voice | **N** |
 | Close conversation | **Esc** |
 | Restart after ending | **Enter** |
 
@@ -46,3 +48,13 @@ For deploying your own demo (Cloudflare Worker proxy + web export + Pages/Itch),
 ## Status
 
 Prototype. Mechanic skeleton in place, content writing ongoing.
+
+## License
+
+**All Rights Reserved.** The source is published here for transparency and portfolio display only — see [LICENSE](LICENSE) for the full terms.
+
+You are free to read and study the code. You are **not** free to copy, modify, redistribute, host, fork, or otherwise reuse it (including for "non-commercial" projects) without prior written permission.
+
+Third-party assets (3D models, audio, fonts) carry their own licenses — see [assets/sketchfab/CREDITS.md](assets/sketchfab/CREDITS.md).
+
+For licensing inquiries: <g.ozgur@archangelautonomy.com>

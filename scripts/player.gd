@@ -3,6 +3,13 @@ extends CharacterBody3D
 const SPEED := 5.0
 const GRAVITY := 9.8
 const COMFORT_RADIUS := 5.0
+const DASH_SPEED := 22.0
+const DASH_DURATION := 0.18
+const DASH_COOLDOWN := 0.7
+
+var _dash_timer: float = 0.0
+var _dash_cooldown_timer: float = 0.0
+var _dash_dir: Vector3 = Vector3.ZERO
 
 @export var goske_mat: StandardMaterial3D
 @export var black_mat: StandardMaterial3D
@@ -85,13 +92,18 @@ func _physics_process(delta: float) -> void:
 	# Conversation open: only freeze if the input field has focus
 	# (otherwise the player can roam while alters speak through bubbles).
 	var convo := get_tree().get_first_node_in_group("conversation_ui")
-	var typing: bool = false
 	if convo and convo.is_open():
-		var input_line: LineEdit = convo.input_line
-		typing = input_line != null and input_line.has_focus()
-	if typing:
 		velocity = Vector3.ZERO
 		move_and_slide()
+		_play_anim(ANIM_IDLE)
+		_update_camera()
+		return
+	var subtitle := get_tree().get_first_node_in_group("opening_subtitle")
+	if subtitle and subtitle._active:
+		velocity = Vector3.ZERO
+		move_and_slide()
+		_play_anim(ANIM_IDLE)
+		_update_camera()
 		return
 	# Slow exhaustion recovery while idle (and not typing)
 	if gs:
@@ -99,13 +111,25 @@ func _physics_process(delta: float) -> void:
 
 	var input_dir := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	var direction := Vector3(input_dir.x, 0, input_dir.y)
-	# Iso camera is at (6,6,6) → world axes are 45° off screen axes.
-	# Rotate input so W maps to "screen up" = world -X-Z direction.
 	direction = direction.rotated(Vector3.UP, deg_to_rad(45))
 	direction = direction.normalized()
 
-	velocity.x = direction.x * SPEED
-	velocity.z = direction.z * SPEED
+	# Dash timers
+	_dash_cooldown_timer = max(0.0, _dash_cooldown_timer - delta)
+	if _dash_timer > 0.0:
+		_dash_timer -= delta
+		velocity.x = _dash_dir.x * DASH_SPEED
+		velocity.z = _dash_dir.z * DASH_SPEED
+	else:
+		velocity.x = direction.x * SPEED
+		velocity.z = direction.z * SPEED
+
+	# Trigger dash on Space — use last move dir, fall back to facing dir
+	if Input.is_action_just_pressed("dash") and _dash_cooldown_timer <= 0.0:
+		var d := direction if direction.length_squared() > 0.01 else Vector3(sin(rotation.y), 0, cos(rotation.y))
+		_dash_dir = d.normalized()
+		_dash_timer = DASH_DURATION
+		_dash_cooldown_timer = DASH_COOLDOWN
 
 	if not is_on_floor():
 		velocity.y -= GRAVITY * delta

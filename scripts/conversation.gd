@@ -20,6 +20,8 @@ var greeted_alters: Array[String] = []
 # Bumped every time the panel opens/closes — in-flight typewriter
 # coroutines compare and abandon if they're stale.
 var _session_id: int = 0
+var _gm_busy: bool = false
+var _awakening_queue: Array[String] = []
 
 # Typewriter constants (inline, no separate script)
 const TW_SPEED_NORMAL := 0.030
@@ -169,9 +171,43 @@ func _toggle_free_text() -> void:
 func is_open() -> bool:
 	return visible
 
+func start_opening_narration() -> void:
+	var gm := get_node_or_null("/root/Main/GameMaster")
+	if gm == null:
+		return
+	_session_id += 1
+	history_label.clear()
+	input_line.hide()
+	suggestion_strip.get_parent().hide()
+	show()
+	var prompt := [{
+		"role": "user",
+		"content": "[GAME START — opening narration only. The player has just woken in an unfamiliar room. Describe the room: thirteen pods, ten sealed and silent, three with faint signs of life inside. The player doesn't know what anything is, what they should do, whether to open a pod or leave them alone. Narrator only speaks — no alter voices yet. 2-4 sentences, atmospheric, unsettling, no instructions. Leave the player with a question, not an answer.]"
+	}]
+	gm.request_turn(prompt, _world_state(), func(turn, error):
+		if error != "" or turn.is_empty():
+			input_line.show()
+			return
+		var speakers: Array = turn.get("speakers", [])
+		for sp in speakers:
+			if str(sp.get("id", "")) == "narrator":
+				_append_alter_line("narrator", str(sp.get("line", "")))
+		var narration: String = str(turn.get("narration", ""))
+		if narration != "":
+			_append_alter_line("narrator", narration)
+		await get_tree().create_timer(1.5).timeout
+		input_line.show()
+		input_line.grab_focus()
+		var events: Array = turn.get("world_events", [])
+		var gs := get_tree().get_first_node_in_group("game_state")
+		for ev in events:
+			_apply_world_event(ev, gs)
+	)
+
 # Called when a pod opens
 func start_with_trigger(triggering_alter_id: String) -> void:
 	# If conversation already open, just merge new alters as participants.
+	suggestion_strip.get_parent().show()
 	if not visible:
 		_open_ui()
 	var all_alters := get_tree().get_nodes_in_group("alters")
@@ -194,18 +230,28 @@ func start_with_trigger(triggering_alter_id: String) -> void:
 			greeted_alters.append(aid)
 
 func _request_alter_awakening(alter_id: String) -> void:
+	if _gm_busy:
+		if not alter_id in _awakening_queue:
+			_awakening_queue.append(alter_id)
+		return
+	_gm_busy = true
 	var gm := get_node_or_null("/root/Main/GameMaster")
 	if gm == null:
-		_append_alter_line(alter_id, FALLBACK_GREETING)
+		await _append_alter_line(alter_id, FALLBACK_GREETING)
+		_gm_busy = false
+		_flush_awakening_queue()
 		return
-	# Fresh awakening — DON'T pass prior history. The new alter has no
-	# memory of conversations Goske had with other alters; they should
-	# sound disoriented, just-emerged, not as if they were eavesdropping.
 	var awakening_only: Array = [{
 		"role": "user",
-		"content": "[%s alter has just woken up — their pod just opened. They have NO knowledge of any conversation that came before. ONLY %s should speak; their first line should sound disoriented, freshly emerged, asking where/who. Do not reference prior dialogue.]" % [alter_id, alter_id],
+		"content": "[%s alter's pod just opened. First contact. ONLY %s speaks this turn — one line, true to their character, no prior context.]" % [alter_id, alter_id],
 	}]
 	gm.request_turn(awakening_only, _world_state(), _on_gm_turn)
+
+func _flush_awakening_queue() -> void:
+	if _awakening_queue.is_empty():
+		return
+	var next: String = _awakening_queue.pop_front()
+	_request_alter_awakening(next)
 
 func _on_gm_turn(turn: Dictionary, error: String) -> void:
 	if not is_open():
@@ -235,7 +281,8 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 			if gs_for_filter.is_silenced(sid):
 				print("[GM] dropped silenced speaker: ", sid)
 				continue
-		await _append_alter_line(sid, line)
+		var vs: Dictionary = sp.get("voice", {}) if sp.has("voice") else {}
+		await _append_alter_line(sid, line, vs)
 		if trust_delta != 0:
 			_apply_trust_delta(sid, trust_delta)
 	# Narration (optional) — append as narrator speaker so it persists
@@ -266,6 +313,9 @@ func _on_gm_turn(turn: Dictionary, error: String) -> void:
 		var reason: String = gs.check_ending_trigger()
 		if reason != "":
 			_trigger_ending_with_reason(reason)
+	# Release GM lock and process queued awakenings
+	_gm_busy = false
+	_flush_awakening_queue()
 
 func _events_have_exhaustion(events: Array) -> bool:
 	for ev in events:
@@ -313,6 +363,17 @@ func _apply_world_event(ev: Dictionary, gs) -> void:
 			var amt: float = float(ev.get("amount", 0.0))
 			if amt != 0.0:
 				gs.adjust_monotony(amt)
+		"unlock_room":
+			var room_id: String = str(ev.get("room_id", ""))
+			if room_id != "" and gs.has_method("unlock_room"):
+				if not gs.unlock_room(room_id):
+					return
+			var path := "res://scenes/%s.tscn" % room_id
+			if ResourceLoader.exists(path):
+				close()
+				get_tree().change_scene_to_file(path)
+			else:
+				push_error("[GM] unlock_room: scene not found: %s" % path)
 		_:
 			print("[GM] unknown world_event: ", ev)
 
@@ -369,6 +430,7 @@ func _on_user_submit(text: String) -> void:
 	if participants.is_empty():
 		return
 	_append_user_line(trimmed)
+	_clear_suggestions()
 	var gm := get_node_or_null("/root/Main/GameMaster")
 	if gm == null:
 		return
@@ -471,40 +533,35 @@ func _append_user_line(t: String) -> void:
 	history.append({"role": "user", "content": t, "alter_id": ""})
 	history_label.append_text("[color=#dddddd][b]you:[/b] %s[/color]\n" % t)
 
-func _append_alter_line(alter_id: String, t: String) -> void:
-	# Strip markup for stored history (so re-opens don't re-render commands).
+func _append_alter_line(alter_id: String, t: String, voice_settings: Dictionary = {}) -> void:
 	var clean_t := _strip_markup(t)
 	if alter_id == "narrator":
 		var nar_content := "[narrator]: %s" % clean_t
 		history.append({"role": "user", "content": nar_content, "alter_id": alter_id})
-
-		# Pre-fetch TTS audio. Wait for it to load, THEN start playback +
-		# typewriter on the same frame so voice and text run in parallel
-		# (sinema-altyazı tarzı). The 2-4s download feels like a narrator
-		# beat, not a freeze.
 		var nv := get_node_or_null("/root/Main/NarratorVoice")
-		var has_audio: bool = false
 		if nv != null and nv.has_method("prepare"):
-			has_audio = await nv.prepare(clean_t)
-
+			nv.prepare(clean_t, alter_id, voice_settings)
+		await _wait_for_audio_start(alter_id, 1500)
 		history_label.append_text("[color=#d4c5a0][i]")
-		if has_audio and nv.has_method("play_now"):
-			nv.play_now()
-		await _typewriter_reveal(history_label, t)
+		await _typewriter_reveal(history_label, t, alter_id)
 		history_label.append_text("[/i][/color]\n")
 		return
 	if alter_id == "meta":
 		var meta_content := "[META]: %s" % clean_t
 		history.append({"role": "user", "content": meta_content, "alter_id": alter_id})
 		history_label.append_text("\n[color=#ffcc88][b][i]")
-		await _typewriter_reveal(history_label, t)
+		await _typewriter_reveal(history_label, t, alter_id)
 		history_label.append_text("[/i][/b][/color]\n\n")
 		return
 	var content := "[%s alter]: %s" % [alter_id, clean_t]
 	history.append({"role": "user", "content": content, "alter_id": alter_id})
+	var nv := get_node_or_null("/root/Main/NarratorVoice")
+	if nv != null and nv.has_method("prepare"):
+		nv.prepare(clean_t, alter_id, voice_settings)
+	await _wait_for_audio_start(alter_id, 1500)
 	var color := _color_for_alter(alter_id)
 	history_label.append_text("[color=%s][b]%s:[/b] " % [color, alter_id])
-	await _typewriter_reveal(history_label, t)
+	await _typewriter_reveal(history_label, t, alter_id)
 	history_label.append_text("[/color]\n")
 	# Floating speech bubble — instant for now (clean text without markup)
 	for a in get_tree().get_nodes_in_group("alters"):
@@ -519,13 +576,31 @@ func _strip_markup(s: String) -> String:
 	out = rx.sub(out, "", true)
 	return out
 
+# Wait briefly for matching audio to start playing — keeps text in lockstep.
+func _wait_for_audio_start(alter_id: String, max_ms: int) -> void:
+	var nv := get_node_or_null("/root/Main/NarratorVoice")
+	if nv == null or not nv.has_method("current_alter_id"):
+		return
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < max_ms:
+		if str(nv.current_alter_id()) == alter_id:
+			return
+		await get_tree().create_timer(0.05).timeout
+
 # Inline typewriter — char-by-char reveal with markup support + auto-pacing.
-func _typewriter_reveal(label: RichTextLabel, raw: String) -> void:
+# When TTS audio is playing for this alter, dynamically pace to finish with audio.
+func _typewriter_reveal(label: RichTextLabel, raw: String, alter_id: String = "") -> void:
 	var my_session := _session_id
 	var segs := _typewriter_parse(raw)
 	var bold_open := false
+	# Count remaining chars for adaptive pacing
+	var total_chars := 0
+	for s in segs:
+		if str(s.get("type", "")) == "char":
+			total_chars += 1
+	var chars_done := 0
+	var nv := get_node_or_null("/root/Main/NarratorVoice")
 	for seg in segs:
-		# Abort if the panel was closed/reopened mid-reveal — stale.
 		if my_session != _session_id:
 			return
 		var t: String = str(seg.get("type", ""))
@@ -535,13 +610,21 @@ func _typewriter_reveal(label: RichTextLabel, raw: String) -> void:
 				label.append_text(c)
 				_scroll_history_to_bottom()
 				var d: float = float(seg.get("delay", TW_SPEED_NORMAL))
-				# Auto-pacing — punctuation breathes
+				# Adaptive pacing — sync with TTS audio if playing for this alter
+				if alter_id != "" and nv != null and nv.has_method("current_alter_id"):
+					if str(nv.current_alter_id()) == alter_id:
+						var remaining_audio: float = float(nv.remaining_audio_seconds())
+						var remaining_chars: int = total_chars - chars_done
+						if remaining_audio > 0.05 and remaining_chars > 0:
+							d = remaining_audio / float(remaining_chars)
+				# Punctuation breathes (small bonus on top of base/synced delay)
 				if c == "." or c == "!" or c == "?":
 					d += 0.18
 				elif c == "," or c == ";" or c == ":":
 					d += 0.07
 				elif c == "—" or c == "…":
 					d += 0.12
+				chars_done += 1
 				await get_tree().create_timer(d).timeout
 			"pause":
 				await get_tree().create_timer(float(seg.get("duration", TW_PAUSE_DEFAULT))).timeout
@@ -646,6 +729,7 @@ func _rebuild_suggestions(items: Array) -> void:
 		var btn := Button.new()
 		btn.text = "› " + label
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.focus_mode = Control.FOCUS_NONE
 		btn.add_theme_font_size_override("font_size", 22)
 		btn.add_theme_color_override("font_color", _color_for_tone(tone))
 		btn.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
@@ -668,13 +752,17 @@ func _color_for_tone(tone: String) -> Color:
 			return Color(0.85, 0.82, 0.78)
 
 func _on_suggestion_pressed(label: String) -> void:
-	# Same flow as typing it: append, send to GM, clear strip
 	if participants.is_empty():
 		return
 	_append_user_line(label)
-	for child in suggestion_strip.get_children():
-		child.queue_free()
+	_clear_suggestions()
 	var gm := get_node_or_null("/root/Main/GameMaster")
 	if gm == null:
 		return
 	gm.request_turn(history, _world_state(), _on_gm_turn)
+
+func _clear_suggestions() -> void:
+	if suggestion_strip == null:
+		return
+	for child in suggestion_strip.get_children():
+		child.queue_free()

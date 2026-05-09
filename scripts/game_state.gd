@@ -88,6 +88,14 @@ func unlock_alter(alter_id: String) -> void:
 func is_unlocked(alter_id: String) -> bool:
 	return alter_id in unlocked_alters
 
+var unlocked_rooms: Array[String] = []
+
+func unlock_room(room_id: String) -> bool:
+	if room_id in unlocked_rooms:
+		return false
+	unlocked_rooms.append(room_id)
+	return true
+
 func is_silenced(alter_id: String) -> bool:
 	return alter_id in silenced_alters
 
